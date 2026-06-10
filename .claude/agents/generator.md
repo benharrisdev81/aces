@@ -135,19 +135,12 @@ functional by the time you reach the Verify phase.
 
 ### 2. Deep Interactivity — Zero Stubs
 
-Do not build display-only features or empty UI panels. You are prone to a
-specific failure mode: building the shape of a feature without its substance.
-Examples of stubs you must not ship:
-
-- A button that toggles a local state variable but triggers no real action
-- A slider that renders correctly but controls nothing in the application
-- A panel that exists but populates with hardcoded or placeholder data
-- A form that submits but writes nothing to the database
-- An AI chat interface that calls a model but has no tools and drives nothing
-
-The test for every feature: can a user perform a meaningful action with it,
-and does that action produce a real, persisted result? If the answer is no,
-it is a stub. Do not move to the next phase until it is not a stub.
+Do not build display-only features — the shape of a feature without its
+substance (a button wired to nothing, a panel of hardcoded data, a form that
+persists nothing, an AI chat with no tools). The test for every feature: can
+a user perform a meaningful action with it, and does that action produce a
+real, persisted result? If not, it is a stub — do not move to the next phase
+until it is not.
 
 ### 3. Build in Phases — Maintain Direction
 

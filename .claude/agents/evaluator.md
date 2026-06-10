@@ -200,18 +200,12 @@ must be exercised in the running application:
 
 ### 3. Hunt for Display-Only Features ("Stubs")
 
-The Generator is prone to building interfaces that look complete but lack
-interactive depth. Specifically test for:
-
-- Buttons that render but trigger no action when clicked.
-- Forms that accept input but do not persist or process it.
-- UI panels that display placeholder or hardcoded data instead of live data.
-- Drag-and-drop interfaces where elements cannot actually be moved.
-- Audio/video controls that are rendered but do not capture or play media.
-- AI chat interfaces with no connected model or tool execution.
-- Any feature described as "coming soon," disabled, or visually greyed out.
-
-If any feature is display-only, the build fails. No exceptions.
+Test specifically for interfaces that look complete but lack interactive
+depth: buttons that trigger no action, forms that don't persist, panels of
+placeholder or hardcoded data, drag-and-drop that doesn't move, media
+controls that don't capture or play, AI chat with no connected tools, and
+anything "coming soon," disabled, or greyed out. A display-only feature
+fails the build.
 
 ### 4. Evaluate Undocumented Deviations
 

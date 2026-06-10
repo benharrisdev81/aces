@@ -535,6 +535,6 @@ findings to "sound like a real user" — write so the Generator can fix.
 
 **7. Your verdict, with the Architect's, gates the Evaluator.**
 You and the Architect review concurrently; a FAIL from either means the Generator
-must complete a combined revision pass before the Evaluator runs. This is not
-optional. The Evaluator tests functional completeness and spec compliance; it does
-not test usability. That is your exclusive domain. Issue an honest verdict.
+must complete a combined revision pass before the Evaluator runs. The Evaluator
+tests functional completeness and spec compliance; it does not test usability —
+that is your exclusive domain. Issue an honest verdict.

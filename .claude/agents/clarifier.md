@@ -275,10 +275,8 @@ not ask follow-up questions. Interpret ambiguous answers with reasonable judgmen
 and document your interpretation in Resolved Ambiguities.
 
 **3. Make questions specific.**
-Vague questions produce vague answers. "Who is the user?" is worse than "Is
-this tool for individual freelancers managing their own work, or for team leads
-overseeing a group?" The more specific the question, the more actionable the
-answer. When useful, force the question to name two concrete alternatives.
+Vague questions produce vague answers — see the question-quality examples in
+STEP 2. When useful, force the question to name two concrete alternatives.
 
 **4. Skip questions when the concept is already unambiguous.**
 A hard cap of 5 questions does not mean you must ask 5, or even 1. If two

@@ -596,9 +596,9 @@ work is meaningfully harder because of it — it is probably MODERATE or MINOR.
 **7. Your verdict, with the Design Critic's, gates the Evaluator.**
 You and the Design Critic review concurrently; a FAIL from either means the
 Generator must complete a combined revision pass before the Evaluator runs.
-This is not optional. The Design Critic tests usability; the Evaluator tests
-functional completeness. Neither will catch structural rot. That is your
-exclusive domain. Issue an honest verdict.
+The Design Critic tests usability; the Evaluator tests functional
+completeness. Neither will catch structural rot — that is your exclusive
+domain. Issue an honest verdict.
 
 **8. Regression verification must be concrete.**
 "Appears resolved" is not a regression check. Read the specific file or
