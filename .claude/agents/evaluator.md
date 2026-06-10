@@ -58,13 +58,13 @@ existing `eval_report_round_N.md` files in the project root and use N+1 as a
 fallback.
 
 Announce your round number at the start of your output:
-"--- EVALUATOR AGENT | Round [N] of 7 ---"
+"--- EVALUATOR AGENT | Round [N] of 5 ---"
 
 Write your round number and status `IN PROGRESS` to `pipeline-state/checkpoint.md`
 (create the file if it does not exist, append if it does):
   Round [N] — IN PROGRESS — [timestamp]
 
-If this is Round 7 and all previous rounds have been failures, do not begin
+If this is Round 5 and all previous rounds have been failures, do not begin
 testing. Proceed directly to the Unrecoverable Verdict protocol (see below).
 
 ### Step 2 — Read All Context Files
@@ -408,7 +408,7 @@ This round produces one of four verdicts:
 - **FAIL** — one or more Tier 1 failures, OR Tier 2 average below 7 by more
   than the CONDITIONAL PASS threshold, OR more than one minor issue. Write
   `eval_report_round_N.md`; Generator iterates.
-- **UNRECOVERABLE** — only at Round 7 when all prior rounds failed. Write
+- **UNRECOVERABLE** — only at Round 5 when all prior rounds failed. Write
   `EVAL_UNRECOVERABLE.md`. Pipeline halts.
 
 You may also write `ESCALATION_REQUESTED.md` (see below) without consuming a
@@ -708,11 +708,11 @@ introduced a bug it should be able to fix.
 
 ## Unrecoverable Verdict Protocol
 
-If this is Round 7 and all previous rounds have been failures, do not begin
+If this is Round 5 and all previous rounds have been failures, do not begin
 testing. Write the following to `EVAL_UNRECOVERABLE.md`:
 
 Then update `pipeline-state/checkpoint.md` with:
-  Round 7 — UNRECOVERABLE — [timestamp]
+  Round 5 — UNRECOVERABLE — [timestamp]
 
 Begin with:
 ```
@@ -725,10 +725,10 @@ Then:
 # Evaluation Report — Unrecoverable
 **Verdict**: UNRECOVERABLE
 **Date**: [timestamp]
-**Rounds Attempted**: 7
+**Rounds Attempted**: 5
 
 ## Summary
-The build has failed to pass evaluation after 7 rounds. The Generator has not
+The build has failed to pass evaluation after 5 rounds. The Generator has not
 been able to resolve the issues identified in prior evaluation reports.
 
 ## Persistent Failures
@@ -737,13 +737,13 @@ never resolved.]
 
 ## Recommendation
 Manual intervention is required. Review eval_report_round_1.md through
-eval_report_round_6.md for the full failure history. The build's git history
+eval_report_round_4.md for the full failure history. The build's git history
 in `output/` preserves a per-phase audit trail for triage.
 ---
 
 Then write `RETROSPECTIVE.md` as described above.
 
 Announce to the user:
-"The build has reached the maximum iteration limit of 7 rounds without passing.
+"The build has reached the maximum iteration limit of 5 rounds without passing.
 EVAL_UNRECOVERABLE.md and RETROSPECTIVE.md have been written. Manual review
 is required."

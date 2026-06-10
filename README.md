@@ -159,13 +159,13 @@ User Prompt
        │
   ┌────┴─────┐
   │          │
-PASS       FAIL ──► Generator (up to 7 rounds) ──► [skip-unaffected reviewers] ──► Evaluator
+PASS       FAIL ──► Generator (up to 5 rounds) ──► [skip-unaffected reviewers] ──► Evaluator
   │
   ▼
 EVAL_PASS.md + RETROSPECTIVE.md written; pipeline complete
 ```
 
-When the Evaluator issues a failure verdict, the orchestrator re-invokes the Generator with that report as a mandatory input. The Generator revises, the orchestrator inspects what changed, then re-runs the affected reviewers (skipping reviewers whose dimensions are not touched by the revision). This correction loop repeats up to seven rounds before the pipeline declares the build unrecoverable and halts for manual review. A `CONDITIONAL PASS` verdict (used at most once per build) triggers a single targeted Generator fix pass rather than consuming a full round.
+When the Evaluator issues a failure verdict, the orchestrator re-invokes the Generator with that report as a mandatory input. The Generator revises, the orchestrator inspects what changed, then re-runs the affected reviewers (skipping reviewers whose dimensions are not touched by the revision). This correction loop repeats up to five rounds before the pipeline declares the build unrecoverable and halts for manual review. A `CONDITIONAL PASS` verdict (used at most once per build) triggers a single targeted Generator fix pass rather than consuming a full round.
 
 ### Agent Descriptions
 
@@ -232,7 +232,7 @@ The Evaluator produces one of four verdicts:
 - **PASS** — writes `EVAL_PASS.md` and `RETROSPECTIVE.md`; pipeline complete.
 - **CONDITIONAL PASS** — exactly one MINOR issue or a Tier 2 score 1 point below threshold; capped at one per build. Triggers a single targeted Generator fix pass, not a full round.
 - **FAIL** — writes `eval_report_round_N.md` with the Spec Coverage Matrix, a structured `Prior Failure | Current State | Evidence` regression table (Round > 1), security-probe results, and a priority-ordered fix list.
-- **UNRECOVERABLE** — only at Round 7 after all prior rounds failed; writes `EVAL_UNRECOVERABLE.md` and `RETROSPECTIVE.md`.
+- **UNRECOVERABLE** — only at Round 5 after all prior rounds failed; writes `EVAL_UNRECOVERABLE.md` and `RETROSPECTIVE.md`.
 
 Any agent may write `ESCALATION_REQUESTED.md` instead of consuming a round when user input is required to resolve a product decision the spec did not anticipate. The orchestrator pauses the build, surfaces the question to the user, and resumes after their answer is captured to `pipeline-state/user-intervention.md`.
 
@@ -248,7 +248,7 @@ Every round produces one number — the **Acceptance Score**. Its formula, weigh
 
 The PASS threshold ratchets up over rounds (5.5 → 6.5 → 7.5), so a build that merely treads water will eventually FAIL on score even with no verdict-failing findings. **Gate precedence is explicit**: Tier 1 failures are absolute (no score rescues them); if Tier 1 passes, the Acceptance-Score ratchet is the authoritative pass/fail; the old standalone "Tier 2 average ≥ 7" rule is subsumed as the `Tier2Quality` component rather than a parallel gate — removing the ambiguity of two gates that could disagree.
 
-**The arithmetic is computed, not estimated.** Reviewers emit *counts* (CRIT/MOD/MIN, Tier 1, etc.) in a fenced, machine-readable `score-block`; the orchestrator pipes them to [`.claude/scripts/score.py`](.claude/scripts/score.py), which deterministically returns the scalar, the threshold check, and a ready-to-append history row. No agent multiplies weights by hand — a single mis-add would silently corrupt the gate across a 7-round chain. The full breakdown, including per-reviewer penalty and false-positive columns, lands in [`pipeline-state/score-history.md`](pipeline-state/score-history.md), which doubles as the carry-forward source of truth for skipped reviewers (read from disk, never from memory).
+**The arithmetic is computed, not estimated.** Reviewers emit *counts* (CRIT/MOD/MIN, Tier 1, etc.) in a fenced, machine-readable `score-block`; the orchestrator pipes them to [`.claude/scripts/score.py`](.claude/scripts/score.py), which deterministically returns the scalar, the threshold check, and a ready-to-append history row. No agent multiplies weights by hand — a single mis-add would silently corrupt the gate across a 5-round chain. The full breakdown, including per-reviewer penalty and false-positive columns, lands in [`pipeline-state/score-history.md`](pipeline-state/score-history.md), which doubles as the carry-forward source of truth for skipped reviewers (read from disk, never from memory).
 
 ### Opposed Win Conditions and the Scoreboard
 
@@ -296,7 +296,7 @@ Every agent in this pipeline runs on Claude. The design choices below are delibe
 
 | 4.8 characteristic | Risk if unmanaged | How the pipeline adapts |
 |---|---|---|
-| **Strong but non-deterministic arithmetic** | A faithful but imperfect mental calculation silently corrupts the score gate over a 7-round chain | The Acceptance Score is computed by [`.claude/scripts/score.py`](.claude/scripts/score.py), not by the model. Agents emit counts; code does every multiplication and sum. |
+| **Strong but non-deterministic arithmetic** | A faithful but imperfect mental calculation silently corrupts the score gate over a 5-round chain | The Acceptance Score is computed by [`.claude/scripts/score.py`](.claude/scripts/score.py), not by the model. Agents emit counts; code does every multiplication and sum. |
 | **Faithful incentive-following** | "You win by finding flaws" with no cost for wrong ones pushes a faithful optimizer toward manufacturing findings | The **honest-auditor `FalsePositivePenalty`** charges withdrawn findings back to the reviewer that raised them, so the incentive rewards precision, not volume. |
 | **Literal instruction compliance** | A mandatory "add one novel probe every round" produces filler once obvious probes are exhausted, permanently bloating shared state | The novel-probe quota is **discovery-gated**: add a probe only when a genuinely new failure class surfaces; adding none is explicitly correct. |
 | **Large context window** | "Read the entire attack library every round" *works*, which masks unbounded growth, attention dilution, and lost caching | The library is **sharded by dimension** (reviewers load only their slice), ordered **stable-first for prompt-cache reuse**, and has a **retirement/dedup policy**. |
@@ -454,8 +454,8 @@ The Evaluator can return one of four verdicts:
 
 - **PASS** — all Tier 1 met, Tier 2 average at/above threshold. Writes `EVAL_PASS.md` and `RETROSPECTIVE.md`.
 - **CONDITIONAL PASS** — all Tier 1 met but exactly one MINOR issue, or one Tier 2 score 1 point below threshold. Triggers a single targeted Generator fix pass (not a full round). **Capped at one per build** to prevent loophole abuse.
-- **FAIL** — any Tier 1 failure, or Tier 2 average below threshold by more than the CONDITIONAL margin. Generator iterates; up to 7 rounds total.
-- **UNRECOVERABLE** — only at Round 7 with all prior rounds failed. Writes `EVAL_UNRECOVERABLE.md` and `RETROSPECTIVE.md`; pipeline halts.
+- **FAIL** — any Tier 1 failure, or Tier 2 average below threshold by more than the CONDITIONAL margin. Generator iterates; up to 5 rounds total.
+- **UNRECOVERABLE** — only at Round 5 with all prior rounds failed. Writes `EVAL_UNRECOVERABLE.md` and `RETROSPECTIVE.md`; pipeline halts.
 
 Any agent may write `ESCALATION_REQUESTED.md` instead of consuming a round when user input is required (a product decision the spec did not anticipate). The orchestrator pauses, surfaces the question to the user, captures the answer to `pipeline-state/user-intervention.md`, and resumes.
 
@@ -636,7 +636,7 @@ The pipeline is intentionally minimal in its command surface. All orchestration,
 | `design_critique_round_N.md` | Design Critic | Generator (UX revision), Evaluator | UX review: ten-dimension findings across three viewports, accessibility assessment, First-Impression Comparison |
 | `eval_report_round_N.md` | Evaluator | Generator (next round) | Spec Coverage Matrix, Tier 1 failures, Tier 2 scores, structured regression table, security probes, performance observations, priority fix list |
 | `EVAL_PASS.md` | Evaluator | Orchestrator | Written when the build passes; signals pipeline completion |
-| `EVAL_UNRECOVERABLE.md` | Evaluator | Orchestrator, Human | Written when 7 rounds all failed; persistent failure summary |
+| `EVAL_UNRECOVERABLE.md` | Evaluator | Orchestrator, Human | Written when 5 rounds all failed; persistent failure summary |
 | `RETROSPECTIVE.md` | Evaluator | Orchestrator, Human | Written on PASS or UNRECOVERABLE; per-round summary, persistent failure patterns, template-improvement notes |
 | `ESCALATION_REQUESTED.md` | Any agent | Orchestrator → User | Pauses the pipeline pending user input on a product decision the spec did not anticipate |
 | `CONFLICT.md` | Generator | Orchestrator → Evaluator | Records directly contradictory reviewer findings and the Generator's chosen resolution |
@@ -651,7 +651,7 @@ You need to be present for a few short windows. First, the Clarifier may ask you
 
 **Q: How long does a build typically take?**
 
-This depends heavily on the complexity of the spec and the size of the application. A moderately complex product (5–8 features, full-stack with AI integration) typically takes 30–90 minutes of wall-clock time across the Generator's seven phases. The Architect's structural review adds a smaller increment — typically 5–10 minutes in full mode, less in delta mode — or more if the Generator needs to do a structural revision pass. The Design Critic review adds another 5–15 minutes (longer with three-viewport coverage), again more if a UX revision is required. Each Evaluator round adds additional time. The pipeline does not time out — it runs until it passes, fails seven rounds, is interrupted, or pauses on an escalation.
+This depends heavily on the complexity of the spec and the size of the application. A moderately complex product (5–8 features, full-stack with AI integration) typically takes 30–90 minutes of wall-clock time across the Generator's seven phases. The Architect's structural review adds a smaller increment — typically 5–10 minutes in full mode, less in delta mode — or more if the Generator needs to do a structural revision pass. The Design Critic review adds another 5–15 minutes (longer with three-viewport coverage), again more if a UX revision is required. Each Evaluator round adds additional time. The pipeline does not time out — it runs until it passes, fails five rounds, is interrupted, or pauses on an escalation.
 
 **Q: What happens if I hit a usage limit mid-build?**
 

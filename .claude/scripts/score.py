@@ -63,6 +63,10 @@ W_NOVELTY = 2.0
 W_FALSE_POSITIVE = 1.5  # honest-auditor penalty per withdrawn finding
 
 # Round-by-round PASS threshold ratchet.
+# Fable 5 re-baselining (pending): after 2-3 completed Fable 5 builds, if
+# round-1 scores routinely clear 5.5 with headroom, raise to {1: 6.5, 2: 7.0}
+# / 7.5 -- and update the mirror table in pipeline-state/value-function.md in
+# lockstep. Do not change either alone.
 THRESHOLDS = {1: 5.5, 2: 6.5}
 THRESHOLD_3_PLUS = 7.5
 

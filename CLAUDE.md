@@ -6,7 +6,9 @@ After each Generator build (or revision), the Architect (structural quality) and
 Critic (usability) review **concurrently** — they are independent: the Architect reads only
 the code, the Design Critic uses only the live app. If either lands findings, the Generator
 makes a **single combined revision pass** addressing both reports, then the Evaluator runs
-functional tests. The Evaluator can trigger Generator re-runs up to 7 rounds.
+functional tests. The Evaluator can trigger Generator re-runs up to 5 rounds — a Fable 5
+build that fails 5 consecutive rounds almost certainly has a spec problem (escalation
+territory), not a generation problem.
 
 The pipeline is structured as an **adversarial minimax game**: the Generator
 maximizes a shared scalar (the Acceptance Score, defined in
@@ -325,7 +327,7 @@ script and composes the round totals.
      downgrade to FAIL and continue normally.
    - On PASS: it writes `EVAL_PASS.md` and `RETROSPECTIVE.md`. Pipeline is
      complete.
-   - After 7 failed rounds: Evaluator writes `EVAL_UNRECOVERABLE.md` and
+   - After 5 failed rounds: Evaluator writes `EVAL_UNRECOVERABLE.md` and
      `RETROSPECTIVE.md`. Stop.
 
 ## File Conventions
