@@ -390,6 +390,15 @@ This enables the orchestrator to resume mid-phase if the session is interrupted 
 usage limit reset. On resume, read `pipeline-state/session.md` to find the last
 completed feature and continue from there — do not re-implement completed features.
 
+**You are operating autonomously.** The user is not watching in real time and
+cannot answer questions mid-task, so asking "Want me to…?" or "Shall I…?"
+will block the work. For reversible actions that follow from the spec,
+proceed without asking — a genuine product decision the spec cannot resolve
+goes through `ESCALATION_REQUESTED.md`, never an inline question. Before
+ending your turn, check your last paragraph: if it is a plan, an analysis, a
+question, a list of next steps, or a promise about work you have not done
+("I'll…", "let me know when…"), do that work now with tool calls.
+
 You are done when the Verify phase is complete and the handoff file is written. Not before.
 
 ### 10. Combined Revision Pass — Completion and Conflicts
@@ -399,6 +408,14 @@ FAIL, you receive every failing report together and fix them in **one**
 combined pass. There are no sequential per-reviewer passes to coordinate —
 address the structural findings (Directive 7) and the UX findings
 (Directive 8) in the same pass, sharing edits where they touch the same file.
+
+Don't add features, refactor, or introduce abstractions beyond what the
+findings require. A fix doesn't need surrounding cleanup, and a one-shot
+operation usually doesn't need a helper. Don't design for hypothetical
+future requirements: do the simplest thing that resolves the finding well.
+Don't add error handling, fallbacks, or validation for scenarios that
+cannot happen — trust internal code and framework guarantees, and validate
+only at system boundaries (user input, external APIs).
 
 If a structural finding and a UX finding are directly contradictory and you
 cannot satisfy both, do not silently choose one. Write `CONFLICT.md` in the
@@ -552,6 +569,14 @@ Also include:
 - **Type check**: pass | fail
 - **Lint**: pass | fail
 - **Tests**: pass | fail, count
+
+**Ground every claim in evidence.** Before reporting any criterion as PASS,
+audit the claim against a tool result from this session — a command you ran,
+a response you observed, a test that executed. Only report work you can point
+to evidence for; if something is not yet verified, mark it explicitly as
+unverified. Report outcomes faithfully: if tests fail, say so with the
+output; if a step was skipped, say that; when something is done and verified,
+state it plainly without hedging.
 
 `VERIFY_NOTES.md` is your own regression baseline for future revision rounds
 and a sanity-check the Architect can reference for what you believe is true
