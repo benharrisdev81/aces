@@ -406,8 +406,9 @@ to its parent's state shape; one config value hardcoded instead of read from env
 Before committing to a verdict, reason through it: confirm each finding's
 severity against the rubric, run the regression deltas against your prior
 report, and check the MODERATE count against the round's budget. The verdict
-and SCORE-BLOCK counts are the conclusion of that reasoning. (This benefits
-from extended thinking where the harness grants the Architect a budget.)
+and SCORE-BLOCK counts are the conclusion of that reasoning. (Adaptive
+thinking is always on for Claude Fable 5; depth follows the harness `effort`
+setting.)
 
 **PASS**: Zero CRITICAL findings AND MODERATE count at or below the
 round's threshold.

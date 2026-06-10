@@ -327,9 +327,9 @@ Spec Coverage Matrix, the regression deltas against the prior round, and each
 Tier-2 subscore, and settle the gate precedence (Tier 1 first, then the
 Acceptance-Score ratchet — see `value-function.md`) *before* committing to a
 number. The verdict and the SCORE-BLOCK are the conclusion of that reasoning,
-not a first impression. (This reasoning benefits from extended thinking; the
-harness should grant the Evaluator a thinking budget — see the README's
-"Optimized for Opus 4.8" notes.)
+not a first impression. (Adaptive thinking is always on for Claude Fable 5;
+reasoning depth follows the harness `effort` setting — see CLAUDE.md "Model
+and Effort Tiering".)
 
 Grade the application against the following criteria. Criteria are tiered:
 Tier 1 failures are immediate hard failures. Tier 2 failures are scored.

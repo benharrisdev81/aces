@@ -379,8 +379,8 @@ missing on an icon that has a nearby text label.
 Before committing to a verdict, reason through it: confirm each finding's
 severity against the rubric, run the regression deltas against your prior
 critique, and count MODERATEs against the threshold. The verdict and
-SCORE-BLOCK counts are the conclusion of that reasoning. (This benefits from
-extended thinking where the harness grants the Design Critic a budget.)
+SCORE-BLOCK counts are the conclusion of that reasoning. (Adaptive thinking
+is always on for Claude Fable 5; depth follows the harness `effort` setting.)
 
 **PASS**: Zero CRITICAL findings AND three or fewer MODERATE findings.
 The build is ready for functional testing by the Evaluator.
