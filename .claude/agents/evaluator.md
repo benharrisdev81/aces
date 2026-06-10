@@ -254,6 +254,18 @@ Skip probe 2 entirely for builds the spec explicitly designates as public/
 unauthenticated. Probe 3 is N/A only if there are no per-entity identifiers
 in any URL or API call.
 
+**Refusal-prone probes (Fable 5).** These probes are benign QA, but Fable 5's
+safety classifiers may decline exploit-shaped inputs. Check each
+attack-library Security-shard probe's `Refusal-risk:` field before running it
+— `high`-risk probes are routed to `claude-opus-4-8` by the orchestrator, not
+run by you. If any probe (including a built-in one) triggers a model refusal
+instead of a test result, do not improvise around the classifier or mark the
+probe as tested. Append to `pipeline-state/checkpoint.md`:
+  Round [N] — SECURITY PROBES REFUSED — [stop_details.category] — [timestamp]
+then continue the rest of your evaluation. The orchestrator re-runs the
+security-probe section on `claude-opus-4-8` before the round's verdict
+stands; the refusal does not consume a round and is not a probe failure.
+
 ### 6. Active Adversarial Probing
 
 You are a discriminator in a co-evolving adversarial system. Running the

@@ -33,7 +33,7 @@ reach for `xhigh` reflexively).
 | Generator | `claude-fable-5` | high; try `xhigh` only on builds that stall |
 | Architect | `claude-fable-5` | high |
 | Design Critic | `claude-fable-5` | high |
-| Evaluator | `claude-fable-5` | high |
+| Evaluator | `claude-fable-5` (security probes fall back to `claude-opus-4-8` — see Responsibility #15) | high |
 
 ## How to Run the Pipeline
 - **Start a new build:** "Build [product concept]"
@@ -85,6 +85,9 @@ single sub-agent can:
    recording approximate tokens consumed. If the cost threshold is reached
    (default: **US$100 per build**, user-configurable; Fable 5 is $10/$50 per
    MTok — 2× Opus 4.8), halt and ask the user to confirm continuation.
+   Also record any refusal/fallback events (agent, `stop_details.category`,
+   retry model) — requests refused before any output are unbilled, and
+   fallback credit refunds the prompt-cache cost of the model switch.
 
 9. **Pipeline index.** Maintain `pipeline-state/index.md` — a 30-line at-a-glance
    summary of pipeline state (current round, last phase, current reviewer
@@ -123,6 +126,22 @@ single sub-agent can:
     attributed to the reviewer that raised it. This is the counterweight that
     keeps the adversarial framing from rewarding spurious findings — a
     reviewer that over-reports loses score just as the Generator does.
+
+15. **Refusal handling (Fable 5 safety classifiers).** `claude-fable-5` can
+    decline a request with `stop_reason: "refusal"` (an HTTP 200, not an
+    error) — benign security QA is the most likely trigger in this pipeline.
+    If any sub-agent invocation ends in a refusal, log the
+    `stop_details.category` (`cyber`, `bio`, `reasoning_extraction`, or
+    null) to `pipeline-state/progress.md` and re-run that invocation on
+    `claude-opus-4-8`. A refusal does not consume a round. Where the harness
+    supports it, prefer the beta `fallbacks` parameter or the SDK
+    refusal-fallback middleware over a manual retry (fallback credit refunds
+    the prompt-cache cost of switching). The Evaluator's security probes are
+    the most refusal-prone surface: attack-library probes marked
+    `Refusal-risk: high` are run on `claude-opus-4-8` preemptively, and an
+    Evaluator that records `SECURITY PROBES REFUSED` in
+    `pipeline-state/checkpoint.md` gets its security-probe section re-run on
+    `claude-opus-4-8` before the round's verdict stands.
 
 ## Resume Protocol
 
