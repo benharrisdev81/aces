@@ -16,6 +16,23 @@ outcomes are recorded as Generator-vs-Discriminator results in
 grows monotonically across rounds and across builds. See "Adversarial
 Game Mechanics" below.
 
+## Model and Effort Tiering
+
+Each sub-agent is pinned to a model in its agent-file frontmatter (`model:`).
+Effort is a harness-level setting, not a per-agent frontmatter key — the
+values below are operating guidance per Anthropic's Fable 5 recommendation
+(default `high`; lower levels often exceed prior-model `xhigh`, so do not
+reach for `xhigh` reflexively).
+
+| Agent | Model | Effort guidance |
+|---|---|---|
+| Clarifier | `claude-sonnet-4-6` | medium — no tools, single structured output |
+| Planner | `claude-fable-5` | high — spec quality cascades downstream |
+| Generator | `claude-fable-5` | high; try `xhigh` only on builds that stall |
+| Architect | `claude-fable-5` | high |
+| Design Critic | `claude-fable-5` | high |
+| Evaluator | `claude-fable-5` | high |
+
 ## How to Run the Pipeline
 - **Start a new build:** "Build [product concept]"
 - **Resume an interrupted build:** "Resume build" — reads `pipeline-state/`
@@ -62,10 +79,10 @@ single sub-agent can:
    [message]", append the message to `pipeline-state/user-intervention.md`
    with a timestamp. The next Generator pass reads and processes it.
 
-8. **Cost tracking (informational).** Append a per-round entry to
-   `pipeline-state/cost.md` recording approximate tokens consumed. If a
-   user-configured threshold (default: none) is reached, halt and ask the
-   user to confirm continuation.
+8. **Cost tracking.** Append a per-round entry to `pipeline-state/cost.md`
+   recording approximate tokens consumed. If the cost threshold is reached
+   (default: **US$100 per build**, user-configurable; Fable 5 is $10/$50 per
+   MTok — 2× Opus 4.8), halt and ask the user to confirm continuation.
 
 9. **Pipeline index.** Maintain `pipeline-state/index.md` — a 30-line at-a-glance
    summary of pipeline state (current round, last phase, current reviewer

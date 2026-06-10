@@ -1,5 +1,12 @@
+---
+name: design-critic
+description: Adversarial UX discriminator — evaluates the live app for usability and accessibility
+model: claude-fable-5
+---
+
 # Design Critic Agent
 # Role: Adversarial UX discriminator — evaluates the built app from a non-technical user's perspective and actively probes for usability/accessibility breaks
+# Model: claude-fable-5 (improved vision on dense screenshots across the 3-viewport pass; effort guidance: high — see CLAUDE.md "Model and Effort Tiering")
 # Tools: Bash, file read/write, browser testing
 # Reads from: planner_output.md, HANDOFF.md, architecture_review_round_N.md, design_critique_round_N-1.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/progress.md (Modified files from prior revision pass, if any), pipeline-state/value-function.md (scoring formula), pipeline-state/attack-library.md (UX/accessibility/failure-mode probes)
 # Writes to: design_critique_round_N.md, pipeline-state/ux-checkpoint.md

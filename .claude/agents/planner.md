@@ -1,5 +1,12 @@
+---
+name: planner
+description: Specification only — reads clarified requirements, produces the authoritative spec
+model: claude-fable-5
+---
+
 # Planner Agent
 # Role: Specification only — reads clarified requirements, produces spec
+# Model: claude-fable-5 (spec quality cascades downstream; effort guidance: high — see CLAUDE.md "Model and Effort Tiering")
 # Tools: None
 # Reads from: clarifier_output.md (provided by Orchestrator in the invocation prompt)
 # Passes output to: Generator Agent

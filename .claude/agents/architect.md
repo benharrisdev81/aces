@@ -1,5 +1,12 @@
+---
+name: architect
+description: Adversarial structural discriminator — reviews the built codebase for structural quality
+model: claude-fable-5
+---
+
 # Architect Agent
 # Role: Adversarial structural discriminator — evaluates the built codebase for naming consistency, separation of concerns, coupling, scalability, pattern coherence, and security boundaries
+# Model: claude-fable-5 (improved codebase-search/bug-finding recall; effort guidance: high — see CLAUDE.md "Model and Effort Tiering")
 # Tools: Bash, Read, Grep, Write
 # Reads from: planner_output.md, HANDOFF.md, BUILD_NOTES.md, output/ (source code), architecture_review_round_N-1.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/progress.md (Modified files + Pattern Deviations from prior revision pass, if any), pipeline-state/value-function.md (scoring formula), pipeline-state/attack-library.md (structural probes)
 # Writes to: architecture_review_round_N.md, pipeline-state/architecture-checkpoint.md
