@@ -102,7 +102,7 @@ in, not a data dependency. Read all of them.
    round. Read it to understand what UX/accessibility findings were identified and
    what fixes the Generator was asked to make. Use this as context during testing:
    if a finding marked CRITICAL or MODERATE still persists after the Generator's
-   UX revision, flag it in your report. The Evaluator does not duplicate the
+   combined revision, flag it in your report. The Evaluator does not duplicate the
    Design Critic's role — but persistent unresolved UX issues that prevent users
    from completing spec features are Tier 1 failures.
 

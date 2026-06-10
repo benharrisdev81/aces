@@ -1,10 +1,12 @@
 # Autonomous Build Pipeline
 
 ## Pipeline Overview
-Six sub-agents run in sequence: Clarifier → Planner → Generator → Architect → Design Critic → Evaluator.
-After each Generator build (or revision), the Architect reviews structural quality, the Design
-Critic reviews usability, and then the Evaluator runs functional tests. The Evaluator can trigger
-Generator re-runs up to 7 rounds.
+Six sub-agents: Clarifier → Planner → Generator → (Architect ∥ Design Critic) → Evaluator.
+After each Generator build (or revision), the Architect (structural quality) and the Design
+Critic (usability) review **concurrently** — they are independent: the Architect reads only
+the code, the Design Critic uses only the live app. If either lands findings, the Generator
+makes a **single combined revision pass** addressing both reports, then the Evaluator runs
+functional tests. The Evaluator can trigger Generator re-runs up to 7 rounds.
 
 The pipeline is structured as an **adversarial minimax game**: the Generator
 maximizes a shared scalar (the Acceptance Score, defined in
@@ -51,8 +53,8 @@ single sub-agent can:
 
 1. **Round state.** Maintain `pipeline-state/round.md` as the single source of
    truth for the current round number; sub-agents read it instead of counting
-   files. Update it at the start of every reviewer cycle (Architect →
-   Design Critic → Evaluator). See "Round state file" below.
+   files. Update it at the start of every reviewer cycle (parallel Architect +
+   Design Critic, then Evaluator). See "Round state file" below.
 
 2. **Build identity.** On a new build, create `pipeline-state/builds/{ISO-timestamp}/`
    and point the symlink (or copy, if symlinks are unavailable on the host)
@@ -139,12 +141,10 @@ When invoked with "Resume build":
    - If `CONFLICT.md` exists and is unresolved: surface to the user; pause.
    - If Evaluator has a round IN PROGRESS: re-invoke the Evaluator.
    - If Evaluator returned CONDITIONAL PASS and the targeted fix is not yet logged: re-invoke the Generator with the eval report for the targeted fix.
-   - If Design Critic has a round IN PROGRESS: re-invoke the Design Critic.
-   - If Architect has a round IN PROGRESS: re-invoke the Architect.
-   - If Design Critic issued FAIL for round N but `UX REVISION COMPLETE — Round N` is absent from progress.md: re-invoke the Generator, passing the explicit path `design_critique_round_N.md` for targeted UX fixes.
-   - If Architect issued FAIL for round N but `ARCH REVISION COMPLETE — Round N` is absent from progress.md: re-invoke the Generator, passing the explicit path `architecture_review_round_N.md` for targeted structural fixes.
-   - If Design Critic completed (PASS or FAIL+revision done) but Evaluator has not yet run for that round: re-invoke the Evaluator.
-   - If Architect completed (PASS or FAIL+revision done) but Design Critic has not yet run for that round: re-invoke the Design Critic.
+   - If the Architect or Design Critic has a round IN PROGRESS: re-invoke whichever is in progress (they run concurrently; re-launch both in parallel if both are mid-round).
+   - If one reviewer completed round N but the other never started (and is not skipped under the skip-unaffected policy): invoke the missing reviewer.
+   - If either reviewer issued FAIL for round N but `REVISION COMPLETE — Round N` is absent from progress.md: re-invoke the Generator once, passing the path(s) of every failing report (`architecture_review_round_N.md` and/or `design_critique_round_N.md`) for a single combined revision pass.
+   - If both reviewers completed round N (PASS, or FAIL with the combined revision logged) but the Evaluator has not yet run for that round: re-invoke the Evaluator.
    - If Generator is mid-phase (session.md shows incomplete phase): re-invoke the Generator, instructing it to read `pipeline-state/session.md` and continue from the last completed feature.
    - If a phase boundary was the last log entry in progress.md (HANDOFF COMPLETE not present): re-invoke the Generator at the next phase.
    - If only Planner has completed (plan.md is populated, progress.md is empty): re-invoke the Generator from Phase 1.
@@ -153,8 +153,8 @@ When invoked with "Resume build":
 
 ## Round State File
 
-At the start of every reviewer cycle (each fresh Architect → Design Critic →
-Evaluator pass), write `pipeline-state/round.md`:
+At the start of every reviewer cycle (each fresh parallel Architect + Design
+Critic launch), write `pipeline-state/round.md`:
 
 ```
 Current Round: N
@@ -167,25 +167,26 @@ removes a fragile counting-by-files dependency.
 
 ## Skip-Unaffected-Reviewers Policy
 
-On revision rounds, before invoking the next reviewer, inspect what changed
-since the last full reviewer cycle:
+On revision rounds, before launching the reviewer batch, inspect the prior
+combined revision's `Modified files:` list to decide which reviewers belong
+in this round's parallel batch:
 
-- **A Generator UX revision pass (only)** — the Architect's structural review
-  is preserved; do not re-run the Architect. Run Design Critic (regression on
-  fixes) and Evaluator.
-- **A Generator architectural revision pass (only)** — the Design Critic's
-  prior verdict may still hold; if the modified files do not overlap with
-  user-facing flows, you may skip the Design Critic for this round and run
-  only the Evaluator. When in doubt, run both reviewers.
-- **A Generator Evaluator-revision pass that touches multiple layers** — run
-  the full Architect → Design Critic → Evaluator chain.
+- **The revision touched only user-facing flows (UI copy, styling, ARIA,
+  frontend behavior)** — the Architect's prior structural verdict is
+  preserved; you may skip the Architect. Run Design Critic and Evaluator.
+- **The revision touched only non-user-facing structure (data layer,
+  module boundaries, naming) with no overlap with user-facing flows** —
+  the Design Critic's prior verdict may still hold; you may skip the
+  Design Critic. Run Architect and Evaluator.
+- **The revision touched multiple layers** — run both reviewers
+  (concurrently) and then the Evaluator.
 
 Each reviewer agent also chooses delta vs. full mode internally based on the
 prior revision's `Modified files:` list. The orchestrator's skip policy is the
 outer cut; the agent's mode is the inner cut.
 
-State the skip decision in the orchestrator's status message when invoking
-the next agent. Conservative default: run every reviewer. Skip only when the
+State the skip decision in the orchestrator's status message when launching
+the batch. Conservative default: run every reviewer. Skip only when the
 file-list evidence is unambiguous.
 
 ## Adversarial Game Mechanics
@@ -262,32 +263,33 @@ script and composes the round totals.
    Write `pipeline-state/round.md` with `Current Round: 1` immediately before
    the first reviewer cycle.
 
-4. **Invoke the Architect sub-agent.**
-   It reads `planner_output.md`, `HANDOFF.md`, `BUILD_NOTES.md`, and the source code in
-   `output/`, and reviews the codebase for structural quality across six
-   dimensions (naming consistency, separation of concerns, coupling, pattern
-   coherence, scalability, security boundaries).
-   - It writes `architecture_review_round_N.md` (always, regardless of verdict).
-   - On FAIL: Re-invoke the Generator, passing the explicit path
-     `architecture_review_round_N.md` where N is the current round number. The Generator
-     must read that file and make targeted structural fixes, then append
-     `ARCH REVISION COMPLETE — Round N — [timestamp]` and the `Modified files:`
-     list to `pipeline-state/progress.md`. Then proceed to Step 5.
-   - On PASS: Proceed directly to Step 5.
+4. **Invoke the Architect and Design Critic sub-agents concurrently.**
+   They are independent — launch both in parallel (subject to the
+   skip-unaffected-reviewers policy on revision rounds):
 
-5. **Invoke the Design Critic sub-agent.**
-   It reads `planner_output.md`, `HANDOFF.md`, and `architecture_review_round_N.md`, starts
-   the app, and reviews it for usability and accessibility across ten
-   dimensions plus i18n probe, at three viewport sizes.
-   - It writes `design_critique_round_N.md` (always, regardless of verdict).
-   - On FAIL: Re-invoke the Generator, passing the explicit path `design_critique_round_N.md`
-     where N is the current round number. The Generator must read that file and make targeted
-     UX/accessibility fixes, then append `UX REVISION COMPLETE — Round N — [timestamp]`
-     plus the `Modified files:` and `Pattern Deviations:` lists to
-     `pipeline-state/progress.md`. Then proceed to Step 6.
-   - On PASS: Proceed directly to Step 6.
+   - The **Architect** reads `planner_output.md`, `HANDOFF.md`, `BUILD_NOTES.md`,
+     and the source code in `output/`, and reviews the codebase for structural
+     quality across six dimensions (naming consistency, separation of concerns,
+     coupling, pattern coherence, scalability, security boundaries). It writes
+     `architecture_review_round_N.md` (always, regardless of verdict).
+   - The **Design Critic** reads `planner_output.md` and `HANDOFF.md`, starts
+     the app, and reviews it for usability and accessibility across ten
+     dimensions plus i18n probe, at three viewport sizes. It does **not** read
+     the Architect's review — the two run concurrently. It writes
+     `design_critique_round_N.md` (always, regardless of verdict).
 
-6. **Invoke the Evaluator sub-agent.**
+   When both have completed:
+   - **If either verdict is FAIL:** Re-invoke the Generator **once**, passing
+     the explicit path(s) of every failing report
+     (`architecture_review_round_N.md` and/or `design_critique_round_N.md`).
+     The Generator reads all provided reports and makes one **combined
+     revision pass**, then appends
+     `REVISION COMPLETE — Round N — [timestamp]` plus the `Modified files:`
+     and `Pattern Deviations:` lists to `pipeline-state/progress.md`.
+     Then proceed to Step 5.
+   - **If both PASS:** Proceed directly to Step 5.
+
+5. **Invoke the Evaluator sub-agent.**
    It reads `planner_output.md`, `HANDOFF.md`, `VERIFY_NOTES.md`,
    `architecture_review_round_N.md`, and `design_critique_round_N.md`, starts
    the app, and tests it for functional correctness, spec compliance, and
@@ -295,8 +297,8 @@ script and composes the round totals.
    - On FAIL: it writes `eval_report_round_N.md`. Increment N in
      `pipeline-state/round.md`. Re-invoke the Generator, passing the explicit
      path `eval_report_round_N.md`. The Generator must read that file before
-     beginning its revision. Repeat from Step 4 (apply the skip-unaffected
-     policy).
+     beginning its revision. Repeat from Step 4 (launch the reviewer batch,
+     applying the skip-unaffected policy).
    - On CONDITIONAL PASS: it writes `eval_report_round_N.md` with verdict
      `CONDITIONAL PASS`. Re-invoke the Generator for a single targeted fix
      pass (not a full revision round). Re-invoke the Evaluator only against
@@ -317,8 +319,8 @@ script and composes the round totals.
 | `HANDOFF.md` | Generator | Architect, Design Critic, Evaluator |
 | `BUILD_NOTES.md` | Generator | Architect, Evaluator |
 | `VERIFY_NOTES.md` | Generator | Evaluator |
-| `architecture_review_round_N.md` | Architect | Generator (structural revision), Design Critic, Evaluator |
-| `design_critique_round_N.md` | Design Critic | Generator (UX revision), Evaluator |
+| `architecture_review_round_N.md` | Architect | Generator (combined revision), Evaluator |
+| `design_critique_round_N.md` | Design Critic | Generator (combined revision), Evaluator |
 | `eval_report_round_N.md` | Evaluator | Generator (next round) |
 | `EVAL_PASS.md` | Evaluator | Orchestrator |
 | `EVAL_UNRECOVERABLE.md` | Evaluator | Orchestrator |
@@ -327,7 +329,7 @@ script and composes the round totals.
 | `CONFLICT.md` | Generator | Orchestrator → Evaluator (next round) |
 | `pipeline-state/round.md` | Orchestrator | All reviewer agents |
 | `pipeline-state/index.md` | Orchestrator | All agents (at-a-glance state) |
-| `pipeline-state/progress.md` | Generator (phase transitions + ARCH/UX revisions, with Modified files lists) | Orchestrator, Architect, Design Critic |
+| `pipeline-state/progress.md` | Generator (phase transitions + combined revisions, with Modified files lists) | Orchestrator, Architect, Design Critic |
 | `pipeline-state/checkpoint.md` | Evaluator (round state, conditional-pass flag) | Orchestrator |
 | `pipeline-state/architecture-checkpoint.md` | Architect (round state) | Orchestrator |
 | `pipeline-state/ux-checkpoint.md` | Design Critic (round state) | Orchestrator |

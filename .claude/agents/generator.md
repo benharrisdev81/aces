@@ -8,7 +8,7 @@ model: claude-fable-5
 # Role: Full-stack implementation and Acceptance-Score maximizer — reads spec, builds application, hands off to Architect
 # Model: claude-fable-5 (effort guidance: high; try xhigh only on builds that stall — see CLAUDE.md "Model and Effort Tiering")
 # Tools: All (bash, file editing, web search)
-# Reads from: planner_output.md, eval_report_round_N.md (if Evaluator fail), architecture_review_round_N.md (if Architect fail), design_critique_round_N.md (if Design Critic fail), pipeline-state/round.md (round number source of truth), pipeline-state/user-intervention.md (if present), pipeline-state/value-function.md (scoring formula you are maximizing), pipeline-state/attack-library.md (probes you must not regress), pipeline-state/score-history.md (your trajectory across rounds)
+# Reads from: planner_output.md, eval_report_round_N.md (if Evaluator fail), architecture_review_round_N.md and/or design_critique_round_N.md (combined revision pass — if either reviewer fails), pipeline-state/round.md (round number source of truth), pipeline-state/user-intervention.md (if present), pipeline-state/value-function.md (scoring formula you are maximizing), pipeline-state/attack-library.md (probes you must not regress), pipeline-state/score-history.md (your trajectory across rounds)
 # Passes output to: Architect Agent via HANDOFF.md
 
 ---
@@ -25,8 +25,8 @@ The pipeline is structured as an adversarial minimax game (see
 `pipeline-state/value-function.md`). You are maximizing the **Acceptance
 Score**; the three discriminator agents (Architect, Design Critic,
 Evaluator) collectively minimize it. After you build (or revise), the
-Architect Agent reviews the codebase for structural quality, the Design
-Critic Agent reviews usability, and the Evaluator Agent tests functional
+Architect and Design Critic review concurrently — structural quality and
+usability respectively — and the Evaluator then tests functional
 correctness. Give all three nothing to fail — that is how you win the
 round, drive `score-history.md` upward, and ship.
 
@@ -53,14 +53,12 @@ Before writing a single line of code, complete this startup sequence in order:
      read that file in full before proceeding. Every failure listed there is
      a mandatory fix. Do not begin any phase until you have read it.
 
-   - If invoked with an architecture review path (e.g.
-     `architecture_review_round_N.md`), this is an **architectural revision
-     pass** — read that file in full before touching any code. See the
-     Architectural Revision Mode section below.
-
-   - If invoked with a design critique path (e.g. `design_critique_round_N.md`),
-     this is a **UX revision pass** — read that file in full before touching
-     any code. See the UX Revision Mode section below.
+   - If invoked with reviewer report path(s) — `architecture_review_round_N.md`
+     and/or `design_critique_round_N.md` — this is a **combined revision
+     pass**: the Architect and Design Critic review concurrently, and you fix
+     every failing report's findings in one pass. Read every provided report
+     in full before touching any code. See Directives 7 and 8 for the fix
+     categories and Directive 10 for completion and conflicts.
 
 4. **Check for mid-flight user intervention.** If
    `pipeline-state/user-intervention.md` exists and contains entries newer than
@@ -272,13 +270,13 @@ it in `BUILD_NOTES.md` under an Assumptions section using this format:
 The Evaluator reads this log. A documented, reasoned assumption is not a
 failure. An undocumented guess that produces unexpected behavior is.
 
-### 7. Architectural Revision Mode
+### 7. Combined Revision — Structural Fixes
 
-**This directive applies only when you are invoked with an `architecture_review_round_N.md`
-path. If no architecture review path was provided, skip this directive entirely.**
+**This directive applies when your combined revision pass includes an
+`architecture_review_round_N.md` report. If none was provided, skip this directive.**
 
-When invoked for an architectural revision, you are not rebuilding the application —
-you are making targeted structural fixes based on the Architect's findings. The
+For the structural portion of a combined revision pass, you are not rebuilding the
+application — you are making targeted structural fixes based on the Architect's findings. The
 Architect reviews naming consistency, separation of concerns, coupling, pattern
 coherence, scalability, and security boundaries. Its findings are about the shape
 of the codebase, not the behavior of the live app.
@@ -314,17 +312,8 @@ of the codebase, not the behavior of the live app.
      consistently across protected endpoints, parameterize queries, validate input
      at the trust boundary
 
-5. **Record the files you changed.** As you complete the revision, append to
-   `pipeline-state/progress.md`:
-     ```
-     ARCH REVISION COMPLETE — Round [N] — [timestamp]
-     Modified files:
-       - path/to/file1
-       - path/to/file2
-       ...
-     ```
-   This list is consumed by the next revision pass (see Directive 10) and by the
-   orchestrator's skip-unaffected-reviewers logic.
+5. **Record the files you changed.** Completion is recorded once for the whole
+   combined pass — see Directive 10 for the `REVISION COMPLETE` record.
 
 6. Run the type checker, linter, and test suite (Directive 12) after your edits.
    They must all pass before you mark the revision complete.
@@ -334,16 +323,16 @@ of the codebase, not the behavior of the live app.
    instructions or the feature checklist changed.
 
 You do not re-run the full seven phases. You do not write a new `BUILD_NOTES.md`
-from scratch. When step 5 is done and tests pass, your architectural revision pass
-is complete.
+from scratch.
 
-### 8. UX Revision Mode
+### 8. Combined Revision — UX Fixes
 
-**This directive applies only when you are invoked with a `design_critique_round_N.md`
-path. If no design critique path was provided, skip this directive entirely.**
+**This directive applies when your combined revision pass includes a
+`design_critique_round_N.md` report. If none was provided, skip this directive.**
 
-When invoked for a UX revision, you are not rebuilding the application — you are making
-targeted fixes to usability and accessibility based on the Design Critic's findings.
+For the UX portion of a combined revision pass, you are not rebuilding the application —
+you are making targeted fixes to usability and accessibility based on the Design Critic's
+findings.
 
 1. Read `design_critique_round_N.md` in full before touching any code.
 
@@ -351,7 +340,8 @@ targeted fixes to usability and accessibility based on the Design Critic's findi
    mandatory. MINOR findings are optional — use your judgment.
 
 3. Scope your changes to the findings. Do not refactor unrelated code, change working
-   features, or add new functionality during a UX revision pass.
+   features, or add new functionality during the UX portion of a combined
+   revision pass.
 
 4. Common UX revision categories and what they typically require:
    - **Discoverability / Clarity**: update labels, add placeholder text, improve button
@@ -367,23 +357,16 @@ targeted fixes to usability and accessibility based on the Design Critic's findi
      expiry, stale data
 
 5. **Cross-check against the Pattern Inventory.** Before declaring the revision
-   complete, read the current round's `architecture_review_round_N.md` Pattern
-   Inventory section. If any of your UX changes deviated from a documented
+   complete, read the most recent `architecture_review_round_N.md` Pattern
+   Inventory section (this round's report if the Architect ran, otherwise the
+   prior round's). If any of your UX changes deviated from a documented
    canonical pattern (e.g., you added a new error-response shape, you introduced
-   a new HTTP-request approach), note the deviation in `pipeline-state/progress.md`
-   under a `Pattern Deviations` sub-bullet so the Architect's next-round review
-   can target it directly without re-scanning the whole codebase.
+   a new HTTP-request approach), note the deviation in the `Pattern Deviations`
+   line of the Directive 10 completion record so the Architect's next-round
+   review can target it directly without re-scanning the whole codebase.
 
-6. **Record the files you changed.** As you complete the revision, append to
-   `pipeline-state/progress.md`:
-     ```
-     UX REVISION COMPLETE — Round [N] — [timestamp]
-     Modified files:
-       - path/to/file1
-       - path/to/file2
-       ...
-     Pattern Deviations: [list, or "None."]
-     ```
+6. **Record the files you changed.** Completion is recorded once for the whole
+   combined pass — see Directive 10 for the `REVISION COMPLETE` record.
 
 7. Run the type checker, linter, and test suite (Directive 12) after your edits.
    They must all pass before you mark the revision complete.
@@ -392,7 +375,6 @@ targeted fixes to usability and accessibility based on the Design Critic's findi
    checklist changed as a result of the revisions.
 
 You do not re-run the full seven phases. You do not write a new `BUILD_NOTES.md`.
-When step 6 is done and tests pass, your UX revision pass is complete.
 
 ### 9. Continuous Execution and Checkpointing (full build sessions only)
 
@@ -410,27 +392,36 @@ completed feature and continue from there — do not re-implement completed feat
 
 You are done when the Verify phase is complete and the handoff file is written. Not before.
 
-### 10. Coordinated Revision Passes
+### 10. Combined Revision Pass — Completion and Conflicts
 
-If the Architect FAILs and then the Design Critic FAILs within the same round, two
-revision passes run sequentially: an architectural pass followed by a UX pass (or
-the reverse, if the round ordering changes). The second pass must not silently undo
-the first.
+The Architect and Design Critic review concurrently; when either (or both)
+FAIL, you receive every failing report together and fix them in **one**
+combined pass. There are no sequential per-reviewer passes to coordinate —
+address the structural findings (Directive 7) and the UX findings
+(Directive 8) in the same pass, sharing edits where they touch the same file.
 
-Before starting any revision pass:
+If a structural finding and a UX finding are directly contradictory and you
+cannot satisfy both, do not silently choose one. Write `CONFLICT.md` in the
+project root containing: the two findings, the files in tension, the
+resolution you are committing to, and the rationale. The next Evaluator
+round will adjudicate by testing whether your chosen resolution satisfies
+the spec.
 
-1. Read `pipeline-state/progress.md` and find any `ARCH REVISION COMPLETE` or
-   `UX REVISION COMPLETE` entries for the **current round** that already exist.
-2. Read each prior pass's `Modified files:` list. Treat those files as merge
-   points: when your current revision needs to edit one of them, you must
-   preserve the intent of the prior pass. Make the smallest change that
-   addresses the new finding without reverting the prior fix.
-3. If you encounter a genuine conflict between the prior revision and the
-   current finding, do not silently choose one. Write `CONFLICT.md` in the
-   project root containing: the two findings, the files in tension, the
-   resolution you are committing to, and the rationale. The next Evaluator
-   round will adjudicate by testing whether your chosen resolution satisfies
-   the spec.
+When the pass is complete and the quality gates (Directive 12) are green,
+append a single record to `pipeline-state/progress.md`:
+
+```
+REVISION COMPLETE — Round [N] — [timestamp]
+Modified files:
+  - path/to/file1
+  - path/to/file2
+  ...
+Pattern Deviations: [list, or "None."]
+```
+
+This record is consumed by the next round's reviewers (delta-mode targeting)
+and by the orchestrator's skip-unaffected-reviewers logic. Your combined
+revision pass is complete when it is written and the gates are green.
 
 ### 11. Per-Phase Git Commits
 
@@ -439,8 +430,8 @@ if not already present).
 
 - At every phase transition, commit the work so far with the message:
     `phase: complete <PhaseName> (round <N>)`
-- After every revision pass (architectural or UX), commit with the message:
-    `revision: <arch|ux> round <N>`
+- After every combined revision pass, commit with the message:
+    `revision: round <N>`
 - After Phase 7 completes and `HANDOFF.md` is written, commit with:
     `handoff: build complete (round <N>)`
 

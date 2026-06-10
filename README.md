@@ -133,28 +133,25 @@ User Prompt
 └──────┬──────┘
        │  HANDOFF.md + VERIFY_NOTES.md + output/
        ▼
-┌─────────────┐
-│  Architect  │  Reviews codebase: naming, separation of concerns, coupling, pattern coherence,
-│             │  scalability, security boundaries (+ AI sub-dimension if applicable)
-└──────┬──────┘
-       │
-  ┌────┴──────────────────┐
-  │                       │
-PASS                    FAIL ──► Generator (structural revision)
-  │                                      │
-  │◄─────────────────────────────────────┘
-  ▼
-┌───────────────┐
-│ Design Critic │  Reviews live app as non-technical user at 3 viewports + i18n probe;
-│               │  checks WCAG + failure modes
-└──────┬────────┘
-       │
-  ┌────┴──────────────────┐
-  │                       │
-PASS                    FAIL ──► Generator (UX revision)
-  │                                      │
-  │◄─────────────────────────────────────┘
-  ▼
+┌─────────────────────────────┬───────────────────────────────┐
+│  Architect (concurrent)     │  Design Critic (concurrent)   │
+│  Reviews codebase: naming,  │  Reviews live app as          │
+│  separation of concerns,    │  non-technical user at 3      │
+│  coupling, pattern          │  viewports + i18n probe;      │
+│  coherence, scalability,    │  checks WCAG + failure modes  │
+│  security boundaries        │                               │
+│  (+ AI sub-dimension)       │                               │
+└──────────────┬──────────────┴──────────────┬────────────────┘
+               │                             │
+               └──────────────┬──────────────┘
+                              │
+                 ┌────────────┴────────────┐
+                 │                         │
+            both PASS              either FAIL ──► Generator (one combined
+                 │                                 revision pass, both reports)
+                 │                                       │
+                 │◄──────────────────────────────────────┘
+                 ▼
 ┌─────────────┐
 │  Evaluator  │  Tests every acceptance criterion, runs security probes, scores Tier 2;
 │             │  PASS / CONDITIONAL PASS / FAIL / UNRECOVERABLE
@@ -196,7 +193,7 @@ During Phase 1, the Generator sets up the language's standard type checker, lint
 
 A security baseline (no secrets in source, parameterized queries only, auth-by-default for non-public endpoints, intentional CORS, no `eval` or unsafe templating) is applied across every layer. When the spec marks any AI capability as `core loop`, the Generator swaps Phases 3 and 5 — building the AI agent and its tools first so the frontend is built against working tools rather than placeholders.
 
-The Generator is designed for continuous, uninterrupted execution. It writes checkpoint data after every completed feature and logs each phase transition. On revision rounds, it reads the relevant review (`eval_report_round_N.md`, `architecture_review_round_N.md`, or `design_critique_round_N.md`) before touching any code and records the `Modified files:` list after each revision pass; subsequent revision passes within the same round consult that list to avoid silently undoing earlier fixes. If two reviewer findings are directly contradictory, the Generator writes `CONFLICT.md` describing the conflict and the resolution it commits to, which the next Evaluator round adjudicates.
+The Generator is designed for continuous, uninterrupted execution. It writes checkpoint data after every completed feature and logs each phase transition. On revision rounds, it reads every provided review (`eval_report_round_N.md`, and/or `architecture_review_round_N.md` and `design_critique_round_N.md` together in a single combined pass) before touching any code and records the `Modified files:` list after each revision pass. If two reviewer findings are directly contradictory, the Generator writes `CONFLICT.md` describing the conflict and the resolution it commits to, which the next Evaluator round adjudicates.
 
 #### Architect
 
@@ -204,7 +201,7 @@ The Architect is the fourth agent in the pipeline and sits between the Generator
 
 The Architect reads the source code (not the live app) and evaluates six dimensions: naming consistency, separation of concerns (including premature/single-use abstraction), coupling and module boundaries, pattern coherence, scalability and structural soundness (anchored to the spec's `<scale_targets>`), and security boundaries / trust model. When the spec includes AI capabilities, a seventh sub-dimension reviews tool boundaries, prompt locality, and context-window discipline. Before evaluating, it declares the language conventions in scope (e.g., "Python — PEP 8 snake_case for identifiers"), so naming findings cite a declared rule rather than inventing one on the fly.
 
-It classifies every finding as CRITICAL, MODERATE, or MINOR using the same severity rubric as the Design Critic. A single CRITICAL finding fails the review. The MODERATE budget is **dynamic**: Round 1 allows up to 4, Round 2 allows up to 3, Round 3+ allows up to 2 — accumulated drift compounds, so the budget tightens. A FAIL verdict triggers a Generator structural revision pass before the Design Critic and Evaluator run.
+It classifies every finding as CRITICAL, MODERATE, or MINOR using the same severity rubric as the Design Critic. A single CRITICAL finding fails the review. The MODERATE budget is **dynamic**: Round 1 allows up to 4, Round 2 allows up to 3, Round 3+ allows up to 2 — accumulated drift compounds, so the budget tightens. A FAIL verdict (from the Architect, the concurrently running Design Critic, or both) triggers a single combined Generator revision pass before the Evaluator runs.
 
 Every finding cites specific files, identifiers, or line ranges as evidence — vague "the code is messy" findings are out of scope. The Architect's report includes a Pattern Inventory section documenting the canonical patterns the codebase has committed to, and on Round > 1 a Pattern Inventory Diff explicitly listing patterns added, deprecated, and drifted. Optional Quantitative Observations (files over 500 LOC, functions over 75 LOC, high fan-in/fan-out modules) calibrate findings. Regression checks against prior CRITICAL/MODERATE findings are concrete: the Architect reads the exact file or identifier the prior report cited and states what is there now.
 
@@ -383,7 +380,7 @@ When the spec marks any AI capability as part of the **core loop**, the Generato
 
 ### Architect: Structural Code Review
 
-The Architect runs immediately after the Generator completes its build (or any revision) and before the Design Critic. Unlike the Design Critic and Evaluator, the Architect does not start the application — it reads the source code in `output/`, the spec in `planner_output.md`, and the Generator's own notes in `HANDOFF.md` and `BUILD_NOTES.md`. Before evaluating, it declares the language conventions in scope (e.g., "Python — PEP 8 snake_case for identifiers; SQL — snake_case for tables; REST — kebab-case for resource paths") so naming findings cite a declared rule rather than inventing one.
+The Architect runs immediately after the Generator completes its build (or any revision), concurrently with the Design Critic. Unlike the Design Critic and Evaluator, the Architect does not start the application — it reads the source code in `output/`, the spec in `planner_output.md`, and the Generator's own notes in `HANDOFF.md` and `BUILD_NOTES.md`. Before evaluating, it declares the language conventions in scope (e.g., "Python — PEP 8 snake_case for identifiers; SQL — snake_case for tables; REST — kebab-case for resource paths") so naming findings cite a declared rule rather than inventing one.
 
 **Six evaluation dimensions** (plus an AI sub-dimension when applicable):
 
@@ -407,7 +404,7 @@ When the Architect issues a FAIL verdict, the Generator makes targeted structura
 
 ### Design Critic: UX and Accessibility Review
 
-The Design Critic runs immediately after the Architect. It starts the live application and navigates it as a non-technical first-time user — without reading the code, and at three viewport sizes (375×667 mobile, 768×1024 tablet, 1440×900 desktop).
+The Design Critic runs concurrently with the Architect — the Architect reads the code, the Design Critic uses the product. It starts the live application and navigates it as a non-technical first-time user — without reading the code, and at three viewport sizes (375×667 mobile, 768×1024 tablet, 1440×900 desktop).
 
 **Ten evaluation dimensions** plus an i18n probe:
 
@@ -470,7 +467,7 @@ The pipeline is designed to survive interruption at any granularity without losi
 
 **`pipeline-state/index.md`** — A 30-line at-a-glance summary maintained by the orchestrator: current round, last completed phase, current reviewer verdicts, last revision summary. Reading agents start here.
 
-**`pipeline-state/progress.md`** — Written by the Generator at every phase transition and after each revision pass. Contains timestamped phase log, `ARCH REVISION COMPLETE` / `UX REVISION COMPLETE` markers, the `Modified files:` list after each revision (consumed by the next reviewer's delta-mode decision), `Pattern Deviations:` after each UX revision (consumed by the Architect's next-round review), and the final `HANDOFF COMPLETE` marker.
+**`pipeline-state/progress.md`** — Written by the Generator at every phase transition and after each combined revision pass. Contains timestamped phase log, `REVISION COMPLETE` markers, the `Modified files:` list after each revision (consumed by the next round's reviewer delta-mode decisions), `Pattern Deviations:` (consumed by the Architect's next-round review), and the final `HANDOFF COMPLETE` marker.
 
 **`pipeline-state/checkpoint.md`** — Written by the Evaluator at the start and end of every round. Contains round number, status (`IN PROGRESS`, `PASS`, `CONDITIONAL PASS`, `FAIL`, or `UNRECOVERABLE`), and whether the one-per-build CONDITIONAL PASS has been used.
 
@@ -505,23 +502,17 @@ Read pipeline-state/index.md + round.md + progress.md + checkpoint.md
          ├─ Evaluator returned CONDITIONAL PASS, targeted fix not yet logged?
          │       └─ Re-invoke Generator with eval report for targeted fix
          │
-         ├─ Design Critic round IN PROGRESS?
-         │       └─ Re-invoke Design Critic
+         ├─ Architect or Design Critic round IN PROGRESS?
+         │       └─ Re-invoke whichever is in progress (in parallel if both)
          │
-         ├─ Architect round IN PROGRESS?
-         │       └─ Re-invoke Architect
+         ├─ One reviewer completed round N, the other never started (not skipped)?
+         │       └─ Invoke the missing reviewer (apply skip-unaffected policy)
          │
-         ├─ Design Critic FAIL for round N, no UX REVISION COMPLETE [N]?
-         │       └─ Re-invoke Generator with design_critique_round_N.md
+         ├─ Either reviewer FAIL for round N, no REVISION COMPLETE [N]?
+         │       └─ Re-invoke Generator once with all failing report paths
          │
-         ├─ Architect FAIL for round N, no ARCH REVISION COMPLETE [N]?
-         │       └─ Re-invoke Generator with architecture_review_round_N.md
-         │
-         ├─ Design Critic complete, Evaluator not yet run?
+         ├─ Both reviewers complete (revision logged if needed), Evaluator not yet run?
          │       └─ Re-invoke Evaluator
-         │
-         ├─ Architect complete, Design Critic not yet run?
-         │       └─ Re-invoke Design Critic (apply skip-unaffected policy)
          │
          ├─ Generator mid-phase (session.md has incomplete phase)?
          │       └─ Re-invoke Generator; pass session.md to continue
