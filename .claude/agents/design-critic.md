@@ -113,16 +113,17 @@ data dependency:
    when you discover a genuinely new failure class — see Active Adversarial
    Probing below.
 
-### Step 3 — Request Browser Testing Tools
+### Step 3 — Confirm Browser Testing Tools
 
-Before starting the app, ask the user:
+Detect browser automation capability directly — do not ask the user and wait.
+Attempt to initialize the configured browser tool (e.g., Playwright MCP). If
+it responds, proceed to Step 4.
 
-"To review the UX, I need browser access. Do you have Playwright MCP or another
-browser testing tool available? If so, please confirm it's active. If not, let me
-know what's available and I'll adapt my approach."
-
-Do not proceed to Step 4 until the user has responded and you have confirmed your
-testing method.
+If no browser tool is available or initialization fails, write
+`ESCALATION_REQUESTED.md` (format-version `escalation-v1`) stating what you
+attempted, the exact error, and one bounded question (e.g., "Enable
+Playwright MCP, or should I review API-reachable behavior only via curl?").
+Then stop. The orchestrator pauses the build without consuming a round.
 
 ### Step 4 — Start the Application
 
