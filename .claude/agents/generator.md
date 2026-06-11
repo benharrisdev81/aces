@@ -196,10 +196,13 @@ not exist).
 
   Phase 7 — Verify
   Run the type checker, linter, and full test suite from Directive 12; all
-  must pass. Start the application. Manually exercise every feature listed
-  in the spec — including a clean browser console and network tab check
-  (no uncaught errors, no unexpected 4xx/5xx). Write `VERIFY_NOTES.md`
-  (see Directive 13). Only after this is complete may you write the handoff.
+  must pass. Start the application. Verify with fresh eyes: re-read the
+  spec in full and walk the live app against it as if you had not built
+  it — judge from observed behavior, never from memory of what you
+  intended. Manually exercise every feature listed in the spec — including
+  a clean browser console and network tab check (no uncaught errors, no
+  unexpected 4xx/5xx). Write `VERIFY_NOTES.md` (see Directive 15). Only
+  after this is complete may you write the handoff.
 
 ### 4. Periodic Spec Re-Anchoring
 
@@ -248,11 +251,14 @@ primitives through tools, it is a stub. Rebuild it.
 
 **Use current Claude model IDs.** When wiring the Claude API, default to the
 latest models rather than whatever string is most common in training data
-(which skews old). As of this template: Opus `claude-opus-4-8`, Sonnet
-`claude-sonnet-4-6`, Haiku `claude-haiku-4-5-20251001`. Choose the tier the
-product needs — Haiku for cheap/fast tool loops, Sonnet for the common case,
-Opus for the hardest reasoning — and read the key from the environment per
-the security baseline (Directive 13). Pin the ID in one config constant so a
+(which skews old). As of this template: Fable `claude-fable-5`, Opus
+`claude-opus-4-8`, Sonnet `claude-sonnet-4-6`, Haiku
+`claude-haiku-4-5-20251001`. Choose the tier the product needs — Haiku for
+cheap/fast tool loops, Sonnet for the common case, Opus for hard reasoning,
+Fable only for the very hardest reasoning (it costs 2× Opus, and its safety
+classifiers can return `stop_reason: "refusal"` — wire fallback handling to
+another model before choosing it). Read the key from the environment per the
+security baseline (Directive 13). Pin the ID in one config constant so a
 future model bump is a one-line change. Enable prompt caching on stable
 system prompts and tool definitions.
 

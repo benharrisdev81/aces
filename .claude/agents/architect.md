@@ -324,6 +324,10 @@ Look for:
   dumps) are not blindly included in every model call.
 - **No embedded API keys**: AI provider credentials are environment-driven,
   consistent with the security baseline.
+- **Refusal handling for classifier-gated models**: if the app calls
+  `claude-fable-5`, it must handle `stop_reason: "refusal"` (fallback to
+  another model, or a user-visible error path) rather than assuming every
+  200 response carries content. Missing handling is at minimum MODERATE.
 
 Findings here use the same severity rubric as the other dimensions. Skip this
 sub-dimension entirely if the spec has no `<integrated_ai_capabilities>` section.
@@ -432,7 +436,9 @@ State the threshold you applied in the Verdict Summary.
 ## Output Format
 
 Write your full review report to `architecture_review_round_[N].md` in the
-project root. Begin with the format-version line:
+project root. Report style: lead with the outcome; include only detail that
+changes what the Generator would do next — and write complete sentences, not
+fragments, abbreviations, or arrow chains. Begin with the format-version line:
 
 ```
 format-version: architecture-review-v1

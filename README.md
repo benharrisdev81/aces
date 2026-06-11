@@ -11,7 +11,7 @@ The pipeline is structured as an **adversarial minimax game** inspired by GANs: 
 1. [Quick Start](#1-quick-start)
 2. [Pipeline Overview](#2-pipeline-overview)
 3. [Adversarial Game Mechanics](#adversarial-game-mechanics)
-4. [Optimized for Opus 4.8](#optimized-for-opus-48)
+4. [Optimized for Claude Fable 5](#optimized-for-claude-fable-5)
 5. [Architecture & Technical Deep Dive](#3-architecture--technical-deep-dive)
 6. [File Reference](#4-file-reference)
 7. [FAQ](#5-faq)
@@ -290,11 +290,11 @@ Successful breaks here are first-class findings filed at the appropriate Tier an
 
 The honest tradeoff: a literal GAN is unsupervised; this pipeline keeps the spec (`planner_output.md`) as ground truth, so the discriminators are scoped to the spec rather than chasing pure indistinguishability from human work. The full-GAN moves (population of generators, gradient-only feedback, real-vs-fake discrimination against exemplars) would require deeper changes; what's implemented here is the highest-leverage subset that makes the dynamic genuinely adversarial without abandoning the spec as anchor.
 
-## Optimized for Opus 4.8
+## Optimized for Claude Fable 5
 
-Every agent in this pipeline runs on Claude. The design choices below are deliberate adaptations to how **Opus 4.8** behaves — it follows role framing and incentives faithfully, complies with instructions literally, reasons well in arithmetic but not *deterministically*, and handles large context and parallel tool calls efficiently. Each of those strengths is a double-edged sword that the pipeline is built to exploit safely.
+Every agent in this pipeline runs on Claude — `claude-fable-5` for all agents except the Clarifier (see CLAUDE.md "Model and Effort Tiering"). The design choices below are deliberate adaptations to how **Claude Fable 5** behaves — it follows role framing and incentives faithfully, complies with brief instructions without enumeration, reasons well in arithmetic but not *deterministically*, dispatches parallel subagents dependably, runs safety classifiers that can refuse security-shaped input, and sustains long autonomous turns. Each of those traits is a double-edged sword that the pipeline is built to exploit safely.
 
-| 4.8 characteristic | Risk if unmanaged | How the pipeline adapts |
+| Fable 5 characteristic | Risk if unmanaged | How the pipeline adapts |
 |---|---|---|
 | **Strong but non-deterministic arithmetic** | A faithful but imperfect mental calculation silently corrupts the score gate over a 5-round chain | The Acceptance Score is computed by [`.claude/scripts/score.py`](.claude/scripts/score.py), not by the model. Agents emit counts; code does every multiplication and sum. |
 | **Faithful incentive-following** | "You win by finding flaws" with no cost for wrong ones pushes a faithful optimizer toward manufacturing findings | The **honest-auditor `FalsePositivePenalty`** charges withdrawn findings back to the reviewer that raised them, so the incentive rewards precision, not volume. |
@@ -302,11 +302,14 @@ Every agent in this pipeline runs on Claude. The design choices below are delibe
 | **Large context window** | "Read the entire attack library every round" *works*, which masks unbounded growth, attention dilution, and lost caching | The library is **sharded by dimension** (reviewers load only their slice), ordered **stable-first for prompt-cache reuse**, and has a **retirement/dedup policy**. |
 | **Strong multi-step reasoning** | Verdicts and scores emitted as first impressions waste reasoning capacity | Each reviewer has a **reason-before-verdict** step cueing structured reasoning before the verdict and `score-block` are written. (On Claude Fable 5, adaptive thinking is always on; depth follows the harness `effort` setting.) |
 | **Efficient parallel tool use** | Strictly sequential "read files in order" startup wastes latency | Startup reads are reframed as a **single parallel batch**, with the numbering preserved only as reasoning order. |
-| **Knows the current model lineup (Jan 2026 cutoff)** | Generated AI code still defaults to older model IDs common in training data | The Generator is instructed to **use current Claude model IDs** (`claude-opus-4-8`, `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`), pin them in one constant, and enable prompt caching. |
+| **Knows the current model lineup** | Generated AI code still defaults to older model IDs common in training data | The Generator is instructed to **use current Claude model IDs** (`claude-fable-5`, `claude-opus-4-8`, `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`), pin them in one constant, enable prompt caching — and wire `stop_reason: "refusal"` fallback before choosing Fable 5 in a generated product. |
+| **Safety classifiers on security-shaped input** | A benign security probe refused mid-round looks like a silent agent failure | Orchestrator **refusal handling** (Responsibility #15): log `stop_details.category`, retry on `claude-opus-4-8`, never consume a round; `Refusal-risk: high` attack-library probes route there preemptively. |
+| **Dependable parallel subagents** | Serial reviewer gating wastes half the round's wall-clock for no information gain | The **Architect and Design Critic run concurrently** (code-only vs. live-app-only), and their findings are fixed in one combined Generator revision pass. |
+| **Long autonomous turns (minutes to hours)** | Mid-task permission questions and unexecuted "I'll now…" promises stall an unattended run | Agents **detect-or-escalate** instead of asking inline (`ESCALATION_REQUESTED.md`); the Generator carries an autonomous-operation reminder; harness timeouts are raised in `.claude/settings.json`. |
 | **Reliable with plain instructions** | Vestigial ALLCAPS `MUST`/`NOT` everywhere flattens the signal of the few real hard gates | Emphasis is reserved for genuine non-negotiables (Tier 1 gates, security); routine guidance is plain declarative prose. |
 | **Literal `format-version` checking** | — (pure upside) | Every state file carries a `format-version` header; reviewers halt on mismatch instead of parsing a stale shape. The score/attack-library files are now `*-v2`. |
 
-A note on **prompt caching**: agent system prompts and the stable prefix of each attack-library shard are intended to be cache-friendly — keep the high-frequency content byte-stable so repeated rounds and builds reuse the cache. A note on **thinking**: on Claude Fable 5, adaptive thinking is always on — there is no extended-thinking budget to grant (`budget_tokens` was removed in Opus 4.7, and `thinking: {type: "disabled"}` errors on Fable 5). Reviewer reasoning depth is governed by the per-agent effort guidance in CLAUDE.md "Model and Effort Tiering".
+A note on **prompt caching**: agent system prompts and the stable prefix of each attack-library shard are intended to be cache-friendly — keep the high-frequency content byte-stable so repeated rounds and builds reuse the cache (Fable 5's minimum cacheable prefix is 512 tokens, down from 1,024 on Opus 4.8). A note on **thinking**: on Claude Fable 5, adaptive thinking is always on — there is no extended-thinking budget to grant (`budget_tokens` was removed in Opus 4.7, and `thinking: {type: "disabled"}` errors on Fable 5). Reviewer reasoning depth is governed by the per-agent effort guidance in CLAUDE.md "Model and Effort Tiering".
 
 ## 3. Architecture & Technical Deep Dive
 

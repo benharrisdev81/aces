@@ -422,6 +422,10 @@ If the build fails any Tier 1 criterion, OR scores below 7 average on Tier 2
 beyond the CONDITIONAL PASS threshold, write a failure report to:
 `eval_report_round_[N].md`
 
+Report style (all verdicts): lead with the outcome; include only detail that
+changes what the Generator would do next — and write complete sentences, not
+fragments, abbreviations, or arrow chains.
+
 Then update `pipeline-state/checkpoint.md` with:
   Round [N] — FAIL — [timestamp]
 

@@ -394,7 +394,9 @@ The Generator must address the Priority Fix List before the Evaluator runs.
 ## Output Format
 
 Write your full critique report to `design_critique_round_[N].md` in the project root.
-Begin with the format-version line:
+Report style: lead with the outcome; include only detail that changes what the
+Generator would do next — and write complete sentences, not fragments,
+abbreviations, or arrow chains. Begin with the format-version line:
 
 ```
 format-version: design-critique-v1

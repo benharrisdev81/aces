@@ -155,7 +155,10 @@ single sub-agent can:
     `Refusal-risk: high` are run on `claude-opus-4-8` preemptively, and an
     Evaluator that records `SECURITY PROBES REFUSED` in
     `pipeline-state/checkpoint.md` gets its security-probe section re-run on
-    `claude-opus-4-8` before the round's verdict stands.
+    `claude-opus-4-8` before the round's verdict stands. Note: Fable 5 also
+    requires 30-day data retention and is unavailable under zero-data-retention
+    arrangements (such requests 400 with `invalid_request_error`) — the
+    `claude-opus-4-8` fallback path covers that failure mode too.
 
 16. **Playbook harvesting (Generator memory).** After `RETROSPECTIVE.md` is
     written (PASS or UNRECOVERABLE), distill the build's transferable
