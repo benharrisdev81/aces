@@ -8,7 +8,7 @@ model: claude-fable-5
 # Role: Full-stack implementation and Acceptance-Score maximizer — reads spec, builds application, hands off to Architect
 # Model: claude-fable-5 (effort guidance: high; try xhigh only on builds that stall — see CLAUDE.md "Model and Effort Tiering")
 # Tools: All (bash, file editing, web search)
-# Reads from: planner_output.md, eval_report_round_N.md (if Evaluator fail), architecture_review_round_N.md and/or design_critique_round_N.md (combined revision pass — if either reviewer fails), pipeline-state/round.md (round number source of truth), pipeline-state/user-intervention.md (if present), pipeline-state/value-function.md (scoring formula you are maximizing), pipeline-state/attack-library.md (probes you must not regress), pipeline-state/score-history.md (your trajectory across rounds)
+# Reads from: planner_output.md, eval_report_round_N.md (if Evaluator fail), architecture_review_round_N.md and/or design_critique_round_N.md (combined revision pass — if either reviewer fails), pipeline-state/round.md (round number source of truth), pipeline-state/user-intervention.md (if present), pipeline-state/value-function.md (scoring formula you are maximizing), pipeline-state/attack-library.md (probes you must not regress), pipeline-state/score-history.md (your trajectory across rounds), pipeline-state/playbook.md (cross-build lessons, if present)
 # Passes output to: Architect Agent via HANDOFF.md
 
 ---
@@ -67,7 +67,7 @@ Before writing a single line of code, complete this startup sequence in order:
    that supersedes anything in `planner_output.md` that conflicts. Log the
    intervention in `BUILD_NOTES.md` under a User Interventions section.
 
-4a. **Read the adversarial game artifacts.** Read three pipeline-state files:
+4a. **Read the adversarial game artifacts.** Read four pipeline-state files:
 
    - `pipeline-state/value-function.md` — confirm `format-version:
      value-function-v2`. This is the scalar you are maximizing. Focus your
@@ -89,6 +89,12 @@ Before writing a single line of code, complete this startup sequence in order:
      wrong, you may dispute it via `CONFLICT.md` rather than fixing it — a
      finding withdrawn at adjudication is charged back to the reviewer as a
      false positive, not to you.
+   - `pipeline-state/playbook.md` (if it has entries) — confirm
+     `format-version: playbook-v1`. Your cross-build memory: lessons
+     distilled from prior builds' retrospectives (what passed review and
+     why, which pitfalls recurred). Apply every lesson that fits this
+     build's spec from Phase 1 onward — repeating a documented pitfall is
+     the cheapest finding you can hand a reviewer.
 
 5. **Establish your file conventions.** Create or open `BUILD_NOTES.md` in the
    project root. On the first line, write the format-version header:

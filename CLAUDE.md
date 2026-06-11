@@ -145,6 +145,15 @@ single sub-agent can:
     `pipeline-state/checkpoint.md` gets its security-probe section re-run on
     `claude-opus-4-8` before the round's verdict stands.
 
+16. **Playbook harvesting (Generator memory).** After `RETROSPECTIVE.md` is
+    written (PASS or UNRECOVERABLE), distill the build's transferable
+    lessons — especially its "Persistent Failure Patterns" — into
+    `pipeline-state/playbook.md` using that file's schema and
+    append/dedup/retire policy. The playbook is the Generator's cross-build
+    memory (the defensive mirror of the attack library) and is read by the
+    Generator only — never pass it to a reviewer, so the discriminators'
+    probe surface stays independent.
+
 ## Resume Protocol
 
 When invoked with "Resume build":
@@ -361,6 +370,7 @@ script and composes the round totals.
 | `pipeline-state/score-history.md` | Orchestrator (per-round breakdown + carry-forward source) | Orchestrator, Generator |
 | `pipeline-state/scoreboard.md` | Orchestrator (per-round Generator-vs-Discriminator outcome) | Orchestrator, user |
 | `pipeline-state/attack-library.md` | Orchestrator (appends confirmed defects) + reviewer agents (append novel probes to their shard) | All reviewer agents (own shard only) |
+| `pipeline-state/playbook.md` | Orchestrator (post-build lesson harvesting) | Generator only (never reviewers) |
 | `.claude/scripts/score.py` | Template (canonical calculator) | Orchestrator (runs each round) |
 | `pipeline-state/builds/{timestamp}/` | Orchestrator (per-build dir) | Orchestrator |
 | `pipeline-state/current` | Orchestrator (symlink or pointer to active build) | All agents |
@@ -387,6 +397,7 @@ check it and surface a clear error on mismatch rather than parsing garbage.
 | `pipeline-state/score-history.md` | `score-history-v2` |
 | `pipeline-state/scoreboard.md` | `scoreboard-v1` |
 | `pipeline-state/attack-library.md` | `attack-library-v2` |
+| `pipeline-state/playbook.md` | `playbook-v1` |
 
 ## Sub-Agent Locations
 - `.claude/agents/clarifier.md`
