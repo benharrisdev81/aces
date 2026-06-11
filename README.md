@@ -11,7 +11,7 @@ The pipeline is structured as an **adversarial minimax game** inspired by GANs: 
 1. [Quick Start](#1-quick-start)
 2. [Pipeline Overview](#2-pipeline-overview)
 3. [Adversarial Game Mechanics](#adversarial-game-mechanics)
-4. [Optimized for Opus 4.8](#optimized-for-opus-48)
+4. [Optimized for Claude Fable 5](#optimized-for-claude-fable-5)
 5. [Architecture & Technical Deep Dive](#3-architecture--technical-deep-dive)
 6. [File Reference](#4-file-reference)
 7. [FAQ](#5-faq)
@@ -105,7 +105,7 @@ Your application is in the `output/` directory. Refer to `HANDOFF.md` for start 
 
 ### What It Does
 
-This pipeline accepts a plain-language description of a software product and autonomously produces a fully functional, full-stack web application. You describe what you want to build; the pipeline interrogates your concept for ambiguities, produces a comprehensive specification (with acceptance criteria, a domain glossary, and a conceptual data model), builds the application, reviews the codebase for structural quality and security, reviews the live app for usability and accessibility across three viewport sizes, tests it functionally with security probes, and iterates until it passes — surfacing for the initial clarification questions, browser automation confirmations before live reviews and testing begin, and any mid-flight escalations or conflicts the pipeline encounters.
+This pipeline accepts a plain-language description of a software product and autonomously produces a fully functional, full-stack web application. You describe what you want to build; the pipeline interrogates your concept for ambiguities, produces a comprehensive specification (with acceptance criteria, a domain glossary, and a conceptual data model), builds the application, reviews the codebase for structural quality and security, reviews the live app for usability and accessibility across three viewport sizes, tests it functionally with security probes, and iterates until it passes — surfacing for the initial clarification questions and any mid-flight escalations or conflicts the pipeline encounters (including a missing browser-automation tool, which escalates via `ESCALATION_REQUESTED.md` rather than blocking on an inline question).
 
 The pipeline is built on top of [Claude Code's sub-agent system](https://docs.anthropic.com/en/docs/claude-code/sub-agents), which allows a coordinating orchestrator to spawn specialized agents, each with its own instructions, tool access, and scope of responsibility.
 
@@ -133,28 +133,25 @@ User Prompt
 └──────┬──────┘
        │  HANDOFF.md + VERIFY_NOTES.md + output/
        ▼
-┌─────────────┐
-│  Architect  │  Reviews codebase: naming, separation of concerns, coupling, pattern coherence,
-│             │  scalability, security boundaries (+ AI sub-dimension if applicable)
-└──────┬──────┘
-       │
-  ┌────┴──────────────────┐
-  │                       │
-PASS                    FAIL ──► Generator (structural revision)
-  │                                      │
-  │◄─────────────────────────────────────┘
-  ▼
-┌───────────────┐
-│ Design Critic │  Reviews live app as non-technical user at 3 viewports + i18n probe;
-│               │  checks WCAG + failure modes
-└──────┬────────┘
-       │
-  ┌────┴──────────────────┐
-  │                       │
-PASS                    FAIL ──► Generator (UX revision)
-  │                                      │
-  │◄─────────────────────────────────────┘
-  ▼
+┌─────────────────────────────┬───────────────────────────────┐
+│  Architect (concurrent)     │  Design Critic (concurrent)   │
+│  Reviews codebase: naming,  │  Reviews live app as          │
+│  separation of concerns,    │  non-technical user at 3      │
+│  coupling, pattern          │  viewports + i18n probe;      │
+│  coherence, scalability,    │  checks WCAG + failure modes  │
+│  security boundaries        │                               │
+│  (+ AI sub-dimension)       │                               │
+└──────────────┬──────────────┴──────────────┬────────────────┘
+               │                             │
+               └──────────────┬──────────────┘
+                              │
+                 ┌────────────┴────────────┐
+                 │                         │
+            both PASS              either FAIL ──► Generator (one combined
+                 │                                 revision pass, both reports)
+                 │                                       │
+                 │◄──────────────────────────────────────┘
+                 ▼
 ┌─────────────┐
 │  Evaluator  │  Tests every acceptance criterion, runs security probes, scores Tier 2;
 │             │  PASS / CONDITIONAL PASS / FAIL / UNRECOVERABLE
@@ -162,13 +159,13 @@ PASS                    FAIL ──► Generator (UX revision)
        │
   ┌────┴─────┐
   │          │
-PASS       FAIL ──► Generator (up to 7 rounds) ──► [skip-unaffected reviewers] ──► Evaluator
+PASS       FAIL ──► Generator (up to 5 rounds) ──► [skip-unaffected reviewers] ──► Evaluator
   │
   ▼
 EVAL_PASS.md + RETROSPECTIVE.md written; pipeline complete
 ```
 
-When the Evaluator issues a failure verdict, the orchestrator re-invokes the Generator with that report as a mandatory input. The Generator revises, the orchestrator inspects what changed, then re-runs the affected reviewers (skipping reviewers whose dimensions are not touched by the revision). This correction loop repeats up to seven rounds before the pipeline declares the build unrecoverable and halts for manual review. A `CONDITIONAL PASS` verdict (used at most once per build) triggers a single targeted Generator fix pass rather than consuming a full round.
+When the Evaluator issues a failure verdict, the orchestrator re-invokes the Generator with that report as a mandatory input. The Generator revises, the orchestrator inspects what changed, then re-runs the affected reviewers (skipping reviewers whose dimensions are not touched by the revision). This correction loop repeats up to five rounds before the pipeline declares the build unrecoverable and halts for manual review. A `CONDITIONAL PASS` verdict (used at most once per build) triggers a single targeted Generator fix pass rather than consuming a full round.
 
 ### Agent Descriptions
 
@@ -196,7 +193,7 @@ During Phase 1, the Generator sets up the language's standard type checker, lint
 
 A security baseline (no secrets in source, parameterized queries only, auth-by-default for non-public endpoints, intentional CORS, no `eval` or unsafe templating) is applied across every layer. When the spec marks any AI capability as `core loop`, the Generator swaps Phases 3 and 5 — building the AI agent and its tools first so the frontend is built against working tools rather than placeholders.
 
-The Generator is designed for continuous, uninterrupted execution. It writes checkpoint data after every completed feature and logs each phase transition. On revision rounds, it reads the relevant review (`eval_report_round_N.md`, `architecture_review_round_N.md`, or `design_critique_round_N.md`) before touching any code and records the `Modified files:` list after each revision pass; subsequent revision passes within the same round consult that list to avoid silently undoing earlier fixes. If two reviewer findings are directly contradictory, the Generator writes `CONFLICT.md` describing the conflict and the resolution it commits to, which the next Evaluator round adjudicates.
+The Generator is designed for continuous, uninterrupted execution. It writes checkpoint data after every completed feature and logs each phase transition. On revision rounds, it reads every provided review (`eval_report_round_N.md`, and/or `architecture_review_round_N.md` and `design_critique_round_N.md` together in a single combined pass) before touching any code and records the `Modified files:` list after each revision pass. If two reviewer findings are directly contradictory, the Generator writes `CONFLICT.md` describing the conflict and the resolution it commits to, which the next Evaluator round adjudicates.
 
 #### Architect
 
@@ -204,7 +201,7 @@ The Architect is the fourth agent in the pipeline and sits between the Generator
 
 The Architect reads the source code (not the live app) and evaluates six dimensions: naming consistency, separation of concerns (including premature/single-use abstraction), coupling and module boundaries, pattern coherence, scalability and structural soundness (anchored to the spec's `<scale_targets>`), and security boundaries / trust model. When the spec includes AI capabilities, a seventh sub-dimension reviews tool boundaries, prompt locality, and context-window discipline. Before evaluating, it declares the language conventions in scope (e.g., "Python — PEP 8 snake_case for identifiers"), so naming findings cite a declared rule rather than inventing one on the fly.
 
-It classifies every finding as CRITICAL, MODERATE, or MINOR using the same severity rubric as the Design Critic. A single CRITICAL finding fails the review. The MODERATE budget is **dynamic**: Round 1 allows up to 4, Round 2 allows up to 3, Round 3+ allows up to 2 — accumulated drift compounds, so the budget tightens. A FAIL verdict triggers a Generator structural revision pass before the Design Critic and Evaluator run.
+It classifies every finding as CRITICAL, MODERATE, or MINOR using the same severity rubric as the Design Critic. A single CRITICAL finding fails the review. The MODERATE budget is **dynamic**: Round 1 allows up to 4, Round 2 allows up to 3, Round 3+ allows up to 2 — accumulated drift compounds, so the budget tightens. A FAIL verdict (from the Architect, the concurrently running Design Critic, or both) triggers a single combined Generator revision pass before the Evaluator runs.
 
 Every finding cites specific files, identifiers, or line ranges as evidence — vague "the code is messy" findings are out of scope. The Architect's report includes a Pattern Inventory section documenting the canonical patterns the codebase has committed to, and on Round > 1 a Pattern Inventory Diff explicitly listing patterns added, deprecated, and drifted. Optional Quantitative Observations (files over 500 LOC, functions over 75 LOC, high fan-in/fan-out modules) calibrate findings. Regression checks against prior CRITICAL/MODERATE findings are concrete: the Architect reads the exact file or identifier the prior report cited and states what is there now.
 
@@ -235,7 +232,7 @@ The Evaluator produces one of four verdicts:
 - **PASS** — writes `EVAL_PASS.md` and `RETROSPECTIVE.md`; pipeline complete.
 - **CONDITIONAL PASS** — exactly one MINOR issue or a Tier 2 score 1 point below threshold; capped at one per build. Triggers a single targeted Generator fix pass, not a full round.
 - **FAIL** — writes `eval_report_round_N.md` with the Spec Coverage Matrix, a structured `Prior Failure | Current State | Evidence` regression table (Round > 1), security-probe results, and a priority-ordered fix list.
-- **UNRECOVERABLE** — only at Round 7 after all prior rounds failed; writes `EVAL_UNRECOVERABLE.md` and `RETROSPECTIVE.md`.
+- **UNRECOVERABLE** — only at Round 5 after all prior rounds failed; writes `EVAL_UNRECOVERABLE.md` and `RETROSPECTIVE.md`.
 
 Any agent may write `ESCALATION_REQUESTED.md` instead of consuming a round when user input is required to resolve a product decision the spec did not anticipate. The orchestrator pauses the build, surfaces the question to the user, and resumes after their answer is captured to `pipeline-state/user-intervention.md`.
 
@@ -249,9 +246,9 @@ The pipeline is structured as a minimax game inspired by GANs. The Generator and
 
 Every round produces one number — the **Acceptance Score**. Its formula, weights, and gate precedence are defined in exactly one place, [`pipeline-state/value-function.md`](pipeline-state/value-function.md), and are not restated here to avoid drift. In short: a positive `Tier2Quality` term (Originality double-weighted) minus penalties for structural, UX, functional, novel-defect, and false-positive findings. The Generator maximizes it; the discriminators minimize it.
 
-The PASS threshold ratchets up over rounds (5.5 → 6.5 → 7.5), so a build that merely treads water will eventually FAIL on score even with no verdict-failing findings. **Gate precedence is explicit**: Tier 1 failures are absolute (no score rescues them); if Tier 1 passes, the Acceptance-Score ratchet is the authoritative pass/fail; the old standalone "Tier 2 average ≥ 7" rule is subsumed as the `Tier2Quality` component rather than a parallel gate — removing the ambiguity of two gates that could disagree.
+The PASS threshold ratchets up over rounds (6.5 → 7.0 → 7.5, raised from the Opus 4.8-era 5.5 → 6.5 → 7.5 to match Fable 5's first-shot correctness), so a build that merely treads water will eventually FAIL on score even with no verdict-failing findings. **Gate precedence is explicit**: Tier 1 failures are absolute (no score rescues them); if Tier 1 passes, the Acceptance-Score ratchet is the authoritative pass/fail; the old standalone "Tier 2 average ≥ 7" rule is subsumed as the `Tier2Quality` component rather than a parallel gate — removing the ambiguity of two gates that could disagree.
 
-**The arithmetic is computed, not estimated.** Reviewers emit *counts* (CRIT/MOD/MIN, Tier 1, etc.) in a fenced, machine-readable `score-block`; the orchestrator pipes them to [`.claude/scripts/score.py`](.claude/scripts/score.py), which deterministically returns the scalar, the threshold check, and a ready-to-append history row. No agent multiplies weights by hand — a single mis-add would silently corrupt the gate across a 7-round chain. The full breakdown, including per-reviewer penalty and false-positive columns, lands in [`pipeline-state/score-history.md`](pipeline-state/score-history.md), which doubles as the carry-forward source of truth for skipped reviewers (read from disk, never from memory).
+**The arithmetic is computed, not estimated.** Reviewers emit *counts* (CRIT/MOD/MIN, Tier 1, etc.) in a fenced, machine-readable `score-block`; the orchestrator pipes them to [`.claude/scripts/score.py`](.claude/scripts/score.py), which deterministically returns the scalar, the threshold check, and a ready-to-append history row. No agent multiplies weights by hand — a single mis-add would silently corrupt the gate across a 5-round chain. The full breakdown, including per-reviewer penalty and false-positive columns, lands in [`pipeline-state/score-history.md`](pipeline-state/score-history.md), which doubles as the carry-forward source of truth for skipped reviewers (read from disk, never from memory).
 
 ### Opposed Win Conditions and the Scoreboard
 
@@ -293,23 +290,26 @@ Successful breaks here are first-class findings filed at the appropriate Tier an
 
 The honest tradeoff: a literal GAN is unsupervised; this pipeline keeps the spec (`planner_output.md`) as ground truth, so the discriminators are scoped to the spec rather than chasing pure indistinguishability from human work. The full-GAN moves (population of generators, gradient-only feedback, real-vs-fake discrimination against exemplars) would require deeper changes; what's implemented here is the highest-leverage subset that makes the dynamic genuinely adversarial without abandoning the spec as anchor.
 
-## Optimized for Opus 4.8
+## Optimized for Claude Fable 5
 
-Every agent in this pipeline runs on Claude. The design choices below are deliberate adaptations to how **Opus 4.8** behaves — it follows role framing and incentives faithfully, complies with instructions literally, reasons well in arithmetic but not *deterministically*, and handles large context and parallel tool calls efficiently. Each of those strengths is a double-edged sword that the pipeline is built to exploit safely.
+Every agent in this pipeline runs on Claude — `claude-fable-5` for all agents except the Clarifier (see CLAUDE.md "Model and Effort Tiering"). The design choices below are deliberate adaptations to how **Claude Fable 5** behaves — it follows role framing and incentives faithfully, complies with brief instructions without enumeration, reasons well in arithmetic but not *deterministically*, dispatches parallel subagents dependably, runs safety classifiers that can refuse security-shaped input, and sustains long autonomous turns. Each of those traits is a double-edged sword that the pipeline is built to exploit safely.
 
-| 4.8 characteristic | Risk if unmanaged | How the pipeline adapts |
+| Fable 5 characteristic | Risk if unmanaged | How the pipeline adapts |
 |---|---|---|
-| **Strong but non-deterministic arithmetic** | A faithful but imperfect mental calculation silently corrupts the score gate over a 7-round chain | The Acceptance Score is computed by [`.claude/scripts/score.py`](.claude/scripts/score.py), not by the model. Agents emit counts; code does every multiplication and sum. |
+| **Strong but non-deterministic arithmetic** | A faithful but imperfect mental calculation silently corrupts the score gate over a 5-round chain | The Acceptance Score is computed by [`.claude/scripts/score.py`](.claude/scripts/score.py), not by the model. Agents emit counts; code does every multiplication and sum. |
 | **Faithful incentive-following** | "You win by finding flaws" with no cost for wrong ones pushes a faithful optimizer toward manufacturing findings | The **honest-auditor `FalsePositivePenalty`** charges withdrawn findings back to the reviewer that raised them, so the incentive rewards precision, not volume. |
 | **Literal instruction compliance** | A mandatory "add one novel probe every round" produces filler once obvious probes are exhausted, permanently bloating shared state | The novel-probe quota is **discovery-gated**: add a probe only when a genuinely new failure class surfaces; adding none is explicitly correct. |
 | **Large context window** | "Read the entire attack library every round" *works*, which masks unbounded growth, attention dilution, and lost caching | The library is **sharded by dimension** (reviewers load only their slice), ordered **stable-first for prompt-cache reuse**, and has a **retirement/dedup policy**. |
-| **Strong multi-step reasoning** | Verdicts and scores emitted as first impressions waste 4.8's reasoning capacity | Each reviewer has a **reason-before-verdict** step cueing structured reasoning (and extended thinking where the harness grants a budget) before the verdict and `score-block` are written. |
+| **Strong multi-step reasoning** | Verdicts and scores emitted as first impressions waste reasoning capacity | Each reviewer has a **reason-before-verdict** step cueing structured reasoning before the verdict and `score-block` are written. (On Claude Fable 5, adaptive thinking is always on; depth follows the harness `effort` setting.) |
 | **Efficient parallel tool use** | Strictly sequential "read files in order" startup wastes latency | Startup reads are reframed as a **single parallel batch**, with the numbering preserved only as reasoning order. |
-| **Knows the current model lineup (Jan 2026 cutoff)** | Generated AI code still defaults to older model IDs common in training data | The Generator is instructed to **use current Claude model IDs** (`claude-opus-4-8`, `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`), pin them in one constant, and enable prompt caching. |
+| **Knows the current model lineup** | Generated AI code still defaults to older model IDs common in training data | The Generator is instructed to **use current Claude model IDs** (`claude-fable-5`, `claude-opus-4-8`, `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`), pin them in one constant, enable prompt caching — and wire `stop_reason: "refusal"` fallback before choosing Fable 5 in a generated product. |
+| **Safety classifiers on security-shaped input** | A benign security probe refused mid-round looks like a silent agent failure | Orchestrator **refusal handling** (Responsibility #15): log `stop_details.category`, retry on `claude-opus-4-8`, never consume a round; `Refusal-risk: high` attack-library probes route there preemptively. |
+| **Dependable parallel subagents** | Serial reviewer gating wastes half the round's wall-clock for no information gain | The **Architect and Design Critic run concurrently** (code-only vs. live-app-only), and their findings are fixed in one combined Generator revision pass. |
+| **Long autonomous turns (minutes to hours)** | Mid-task permission questions and unexecuted "I'll now…" promises stall an unattended run | Agents **detect-or-escalate** instead of asking inline (`ESCALATION_REQUESTED.md`); the Generator carries an autonomous-operation reminder; harness timeouts are raised in `.claude/settings.json`. |
 | **Reliable with plain instructions** | Vestigial ALLCAPS `MUST`/`NOT` everywhere flattens the signal of the few real hard gates | Emphasis is reserved for genuine non-negotiables (Tier 1 gates, security); routine guidance is plain declarative prose. |
 | **Literal `format-version` checking** | — (pure upside) | Every state file carries a `format-version` header; reviewers halt on mismatch instead of parsing a stale shape. The score/attack-library files are now `*-v2`. |
 
-A note on **prompt caching**: agent system prompts and the stable prefix of each attack-library shard are intended to be cache-friendly — keep the high-frequency content byte-stable so repeated rounds and builds reuse the cache. A note on **thinking budget**: the reason-before-verdict cues assume the harness grants reviewer sub-agents an extended-thinking budget; this is a Claude Code configuration concern, not something the prompt alone can guarantee.
+A note on **prompt caching**: agent system prompts and the stable prefix of each attack-library shard are intended to be cache-friendly — keep the high-frequency content byte-stable so repeated rounds and builds reuse the cache (Fable 5's minimum cacheable prefix is 512 tokens, down from 1,024 on Opus 4.8). A note on **thinking**: on Claude Fable 5, adaptive thinking is always on — there is no extended-thinking budget to grant (`budget_tokens` was removed in Opus 4.7, and `thinking: {type: "disabled"}` errors on Fable 5). Reviewer reasoning depth is governed by the per-agent effort guidance in CLAUDE.md "Model and Effort Tiering".
 
 ## 3. Architecture & Technical Deep Dive
 
@@ -383,7 +383,7 @@ When the spec marks any AI capability as part of the **core loop**, the Generato
 
 ### Architect: Structural Code Review
 
-The Architect runs immediately after the Generator completes its build (or any revision) and before the Design Critic. Unlike the Design Critic and Evaluator, the Architect does not start the application — it reads the source code in `output/`, the spec in `planner_output.md`, and the Generator's own notes in `HANDOFF.md` and `BUILD_NOTES.md`. Before evaluating, it declares the language conventions in scope (e.g., "Python — PEP 8 snake_case for identifiers; SQL — snake_case for tables; REST — kebab-case for resource paths") so naming findings cite a declared rule rather than inventing one.
+The Architect runs immediately after the Generator completes its build (or any revision), concurrently with the Design Critic. Unlike the Design Critic and Evaluator, the Architect does not start the application — it reads the source code in `output/`, the spec in `planner_output.md`, and the Generator's own notes in `HANDOFF.md` and `BUILD_NOTES.md`. Before evaluating, it declares the language conventions in scope (e.g., "Python — PEP 8 snake_case for identifiers; SQL — snake_case for tables; REST — kebab-case for resource paths") so naming findings cite a declared rule rather than inventing one.
 
 **Six evaluation dimensions** (plus an AI sub-dimension when applicable):
 
@@ -407,7 +407,7 @@ When the Architect issues a FAIL verdict, the Generator makes targeted structura
 
 ### Design Critic: UX and Accessibility Review
 
-The Design Critic runs immediately after the Architect. It starts the live application and navigates it as a non-technical first-time user — without reading the code, and at three viewport sizes (375×667 mobile, 768×1024 tablet, 1440×900 desktop).
+The Design Critic runs concurrently with the Architect — the Architect reads the code, the Design Critic uses the product. It starts the live application and navigates it as a non-technical first-time user — without reading the code, and at three viewport sizes (375×667 mobile, 768×1024 tablet, 1440×900 desktop).
 
 **Ten evaluation dimensions** plus an i18n probe:
 
@@ -457,8 +457,8 @@ The Evaluator can return one of four verdicts:
 
 - **PASS** — all Tier 1 met, Tier 2 average at/above threshold. Writes `EVAL_PASS.md` and `RETROSPECTIVE.md`.
 - **CONDITIONAL PASS** — all Tier 1 met but exactly one MINOR issue, or one Tier 2 score 1 point below threshold. Triggers a single targeted Generator fix pass (not a full round). **Capped at one per build** to prevent loophole abuse.
-- **FAIL** — any Tier 1 failure, or Tier 2 average below threshold by more than the CONDITIONAL margin. Generator iterates; up to 7 rounds total.
-- **UNRECOVERABLE** — only at Round 7 with all prior rounds failed. Writes `EVAL_UNRECOVERABLE.md` and `RETROSPECTIVE.md`; pipeline halts.
+- **FAIL** — any Tier 1 failure, or Tier 2 average below threshold by more than the CONDITIONAL margin. Generator iterates; up to 5 rounds total.
+- **UNRECOVERABLE** — only at Round 5 with all prior rounds failed. Writes `EVAL_UNRECOVERABLE.md` and `RETROSPECTIVE.md`; pipeline halts.
 
 Any agent may write `ESCALATION_REQUESTED.md` instead of consuming a round when user input is required (a product decision the spec did not anticipate). The orchestrator pauses, surfaces the question to the user, captures the answer to `pipeline-state/user-intervention.md`, and resumes.
 
@@ -470,7 +470,7 @@ The pipeline is designed to survive interruption at any granularity without losi
 
 **`pipeline-state/index.md`** — A 30-line at-a-glance summary maintained by the orchestrator: current round, last completed phase, current reviewer verdicts, last revision summary. Reading agents start here.
 
-**`pipeline-state/progress.md`** — Written by the Generator at every phase transition and after each revision pass. Contains timestamped phase log, `ARCH REVISION COMPLETE` / `UX REVISION COMPLETE` markers, the `Modified files:` list after each revision (consumed by the next reviewer's delta-mode decision), `Pattern Deviations:` after each UX revision (consumed by the Architect's next-round review), and the final `HANDOFF COMPLETE` marker.
+**`pipeline-state/progress.md`** — Written by the Generator at every phase transition and after each combined revision pass. Contains timestamped phase log, `REVISION COMPLETE` markers, the `Modified files:` list after each revision (consumed by the next round's reviewer delta-mode decisions), `Pattern Deviations:` (consumed by the Architect's next-round review), and the final `HANDOFF COMPLETE` marker.
 
 **`pipeline-state/checkpoint.md`** — Written by the Evaluator at the start and end of every round. Contains round number, status (`IN PROGRESS`, `PASS`, `CONDITIONAL PASS`, `FAIL`, or `UNRECOVERABLE`), and whether the one-per-build CONDITIONAL PASS has been used.
 
@@ -505,23 +505,17 @@ Read pipeline-state/index.md + round.md + progress.md + checkpoint.md
          ├─ Evaluator returned CONDITIONAL PASS, targeted fix not yet logged?
          │       └─ Re-invoke Generator with eval report for targeted fix
          │
-         ├─ Design Critic round IN PROGRESS?
-         │       └─ Re-invoke Design Critic
+         ├─ Architect or Design Critic round IN PROGRESS?
+         │       └─ Re-invoke whichever is in progress (in parallel if both)
          │
-         ├─ Architect round IN PROGRESS?
-         │       └─ Re-invoke Architect
+         ├─ One reviewer completed round N, the other never started (not skipped)?
+         │       └─ Invoke the missing reviewer (apply skip-unaffected policy)
          │
-         ├─ Design Critic FAIL for round N, no UX REVISION COMPLETE [N]?
-         │       └─ Re-invoke Generator with design_critique_round_N.md
+         ├─ Either reviewer FAIL for round N, no REVISION COMPLETE [N]?
+         │       └─ Re-invoke Generator once with all failing report paths
          │
-         ├─ Architect FAIL for round N, no ARCH REVISION COMPLETE [N]?
-         │       └─ Re-invoke Generator with architecture_review_round_N.md
-         │
-         ├─ Design Critic complete, Evaluator not yet run?
+         ├─ Both reviewers complete (revision logged if needed), Evaluator not yet run?
          │       └─ Re-invoke Evaluator
-         │
-         ├─ Architect complete, Design Critic not yet run?
-         │       └─ Re-invoke Design Critic (apply skip-unaffected policy)
          │
          ├─ Generator mid-phase (session.md has incomplete phase)?
          │       └─ Re-invoke Generator; pass session.md to continue
@@ -645,7 +639,7 @@ The pipeline is intentionally minimal in its command surface. All orchestration,
 | `design_critique_round_N.md` | Design Critic | Generator (UX revision), Evaluator | UX review: ten-dimension findings across three viewports, accessibility assessment, First-Impression Comparison |
 | `eval_report_round_N.md` | Evaluator | Generator (next round) | Spec Coverage Matrix, Tier 1 failures, Tier 2 scores, structured regression table, security probes, performance observations, priority fix list |
 | `EVAL_PASS.md` | Evaluator | Orchestrator | Written when the build passes; signals pipeline completion |
-| `EVAL_UNRECOVERABLE.md` | Evaluator | Orchestrator, Human | Written when 7 rounds all failed; persistent failure summary |
+| `EVAL_UNRECOVERABLE.md` | Evaluator | Orchestrator, Human | Written when 5 rounds all failed; persistent failure summary |
 | `RETROSPECTIVE.md` | Evaluator | Orchestrator, Human | Written on PASS or UNRECOVERABLE; per-round summary, persistent failure patterns, template-improvement notes |
 | `ESCALATION_REQUESTED.md` | Any agent | Orchestrator → User | Pauses the pipeline pending user input on a product decision the spec did not anticipate |
 | `CONFLICT.md` | Generator | Orchestrator → Evaluator | Records directly contradictory reviewer findings and the Generator's chosen resolution |
@@ -660,7 +654,7 @@ You need to be present for a few short windows. First, the Clarifier may ask you
 
 **Q: How long does a build typically take?**
 
-This depends heavily on the complexity of the spec and the size of the application. A moderately complex product (5–8 features, full-stack with AI integration) typically takes 30–90 minutes of wall-clock time across the Generator's seven phases. The Architect's structural review adds a smaller increment — typically 5–10 minutes in full mode, less in delta mode — or more if the Generator needs to do a structural revision pass. The Design Critic review adds another 5–15 minutes (longer with three-viewport coverage), again more if a UX revision is required. Each Evaluator round adds additional time. The pipeline does not time out — it runs until it passes, fails seven rounds, is interrupted, or pauses on an escalation.
+This depends heavily on the complexity of the spec and the size of the application. A moderately complex product (5–8 features, full-stack with AI integration) typically takes 30–90 minutes of wall-clock time across the Generator's seven phases. The Architect's structural review adds a smaller increment — typically 5–10 minutes in full mode, less in delta mode — or more if the Generator needs to do a structural revision pass. The Design Critic review adds another 5–15 minutes (longer with three-viewport coverage), again more if a UX revision is required. Each Evaluator round adds additional time. The pipeline does not time out — it runs until it passes, fails five rounds, is interrupted, or pauses on an escalation.
 
 **Q: What happens if I hit a usage limit mid-build?**
 

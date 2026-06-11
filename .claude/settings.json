@@ -6,5 +6,11 @@
       "Write(**)",
       "Edit(**)"
     ]
+  },
+  "env": {
+    "BASH_DEFAULT_TIMEOUT_MS": "300000",
+    "BASH_MAX_TIMEOUT_MS": "600000",
+    "MCP_TIMEOUT": "120000",
+    "MCP_TOOL_TIMEOUT": "300000"
   }
 }

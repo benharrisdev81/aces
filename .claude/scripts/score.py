@@ -63,7 +63,12 @@ W_NOVELTY = 2.0
 W_FALSE_POSITIVE = 1.5  # honest-auditor penalty per withdrawn finding
 
 # Round-by-round PASS threshold ratchet.
-THRESHOLDS = {1: 5.5, 2: 6.5}
+# Raised for Claude Fable 5 (was 5.5 / 6.5 / 7.5 for Opus 4.8) ahead of the
+# 2-3-build re-baseline. Watch the first Fable 5 builds in score-history.md:
+# if rounds FAIL on score with zero verdict-failing findings, the bar may be
+# too high -- adjust here and in the mirror table in
+# pipeline-state/value-function.md in lockstep. Do not change either alone.
+THRESHOLDS = {1: 6.5, 2: 7.0}
 THRESHOLD_3_PLUS = 7.5
 
 
