@@ -83,21 +83,21 @@ over time, not just reviewer aggressiveness.
 
 | Round | PASS threshold on Acceptance Score |
 |---|---|
-| 1     | ≥ 5.5 |
-| 2     | ≥ 6.5 |
+| 1     | ≥ 6.5 |
+| 2     | ≥ 7.0 |
 | 3+    | ≥ 7.5 |
 
 The bar tightens each round to mirror the MODERATE-budget ratchet in
 `architect.md`, so a build that merely treads water across rounds will
 eventually FAIL on score even with no verdict-failing findings.
 
-**Fable 5 re-baselining (pending).** Claude Fable 5's first-shot correctness
-means builds are expected to pass round 1 far more often, which would leave
-the ratchet unengaged. After 2–3 completed Fable 5 builds, review
-`score-history.md`: if round-1 scores routinely clear 5.5 with headroom,
-raise the ratchet (proposed: 6.5 → 7.0 → 7.5) by changing `THRESHOLDS` in
-`.claude/scripts/score.py` and this table **in lockstep**. Do not change
-either alone.
+**Fable 5 calibration.** This ratchet was raised from the Opus 4.8 values
+(5.5 → 6.5 → 7.5) to match Claude Fable 5's higher first-shot correctness —
+otherwise round-1 passes would leave the ratchet unengaged. Watch the first
+2–3 Fable 5 builds in `score-history.md`: if rounds FAIL on score with zero
+verdict-failing findings, the bar is too high — lower it by changing
+`THRESHOLDS` in `.claude/scripts/score.py` and this table **in lockstep**.
+Do not change either alone.
 
 ---
 

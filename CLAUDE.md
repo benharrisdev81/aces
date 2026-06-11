@@ -252,7 +252,7 @@ deterministic rather than model-estimated.
 
 Gate precedence (from `value-function.md`): **(1)** Tier 1 failures are
 absolute — no score rescues them; **(2)** if Tier 1 passes, the
-Acceptance-Score ratchet (5.5 → 6.5 → 7.5) is the authoritative pass/fail;
+Acceptance-Score ratchet (6.5 → 7.0 → 7.5) is the authoritative pass/fail;
 **(3)** the old standalone Tier-2≥7 rule is subsumed as the `Tier2Quality`
 component, not a parallel gate.
 
