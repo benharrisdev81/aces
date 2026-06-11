@@ -20,6 +20,18 @@ outcomes are recorded as Generator-vs-Discriminator results in
 grows monotonically across rounds and across builds. See "Adversarial
 Game Mechanics" below.
 
+## Long Turns Are Normal
+
+Fable 5 turns on hard tasks run for many minutes at `high` effort, and a
+full build can extend for hours. Do not treat a long-running sub-agent turn
+as hung — `.claude/settings.json` raises bash and MCP tool timeouts, and the
+per-feature `session.md` checkpoint plus the Resume Protocol make
+interruption cheap. Check on a running build asynchronously (status checks
+between agent invocations) rather than blocking on it; never inject
+remaining-token or budget countdowns into a sub-agent's prompt — Fable 5 may
+wrap up prematurely when shown one (cost accounting stays orchestrator-side
+in `cost.md`).
+
 ## Model and Effort Tiering
 
 Each sub-agent is pinned to a model in its agent-file frontmatter (`model:`).
