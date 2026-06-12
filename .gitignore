@@ -15,3 +15,6 @@ __pycache__/
 .idea/
 .vscode/
 *.swp
+
+# Harvest-back worktree (transient; see .claude/scripts/harvest.sh)
+.harvest/

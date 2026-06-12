@@ -261,6 +261,7 @@ This is the change that turns critique from cooperation into competition: the re
 A typical static-checklist pipeline lets the Generator converge on the checklist and stop improving. This pipeline avoids that by giving the discriminators a **growing, persistent test set**: [`pipeline-state/attack-library.md`](pipeline-state/attack-library.md).
 
 - Every confirmed defect ever landed — in any round of any build — is distilled into a reusable probe and appended to the library by the orchestrator.
+- Builds run in **per-build clones** of the template repo, so the library compounds via the **harvest-back protocol**: after a build completes, its new probes (plus playbook lessons and a `build-ledger.md` summary row) are returned to the template as a reviewable PR (`.claude/scripts/harvest.sh`; CLAUDE.md Responsibility #17). The merge review is the dedup/quality backstop.
 - The library is **sharded by dimension** (Security, Failure Modes/Functional, Accessibility/UX, Structural). Each reviewer loads only its own shard, not the whole file — so the library can grow across hundreds of builds without diluting any single reviewer's attention or context. Probes are ordered stable-first to maximize prompt-cache reuse.
 - Adding a novel probe is **discovery-gated, not mandatory**: a reviewer adds one only when a genuinely new failure class surfaces. Adding none is the correct outcome for a quiet round — a forced quota would fill the shared library with low-value filler that slows every future build.
 - A **retirement/dedup policy** keeps "append-only" from meaning "grow forever": probes passed for several consecutive rounds go dormant, duplicates increment a `Seen` counter instead of being re-added, and superseded probes are retired with a pointer to their replacement.
@@ -284,7 +285,7 @@ Successful breaks here are first-class findings filed at the appropriate Tier an
 ### What This Buys You
 
 - **Convergence is visible**: the Acceptance Score trajectory in `score-history.md` shows whether the game is converging or stuck. A flat score across rounds is itself a signal.
-- **Test coverage compounds**: the attack library grows with every build, so each new build inherits the cumulative adversarial knowledge of every prior build.
+- **Test coverage compounds**: the attack library grows with every harvested build, so each new clone inherits the cumulative adversarial knowledge of every prior build that flowed back through a harvest PR.
 - **Reviewers stay honest in both directions**: opposed incentives prevent drift toward leniency, while the false-positive term prevents drift toward over-reporting — reviewers are scored on precision, not just aggressiveness.
 - **Originality matters**: the same double-weighted Originality score that anchors Tier 2 anchors the headline Acceptance Score, so visually generic builds cannot pass on functional correctness alone.
 
@@ -719,6 +720,10 @@ All application code is written to the `output/` directory, which the Generator 
 The `pipeline-state/` files are the pipeline's durable memory. They enable resumption after interruption and are the source of truth the orchestrator uses when you type `Resume build`. You should not edit them manually unless you are intentionally resetting or redirecting the pipeline. Editing checkpoint files during an active build will confuse the resume logic. If you want a clean slate, delete all files in `pipeline-state/`, `clarifier_output.md`, and `planner_output.md`, and start a new build. Multiple builds in the same directory are preserved under `pipeline-state/builds/{timestamp}/`, so older builds remain available for reference.
 
 Two files deserve special treatment: `pipeline-state/attack-library.md` is the cross-build adversarial probe library and is intentionally append-only — when you reset for a new build, **do not delete it** (or do delete it if you genuinely want to discard the cumulative test coverage of all prior builds). `pipeline-state/value-function.md` is the canonical scoring formula and should be edited only deliberately, since changing it changes what the pipeline is optimizing.
+
+**Q: I run each build in a separate clone of this repo. How does cross-build memory work?**
+
+That's the intended workflow, and it's why the **harvest-back protocol** exists (CLAUDE.md Responsibility #17). Three files are designed to compound across builds — `attack-library.md`, `playbook.md`, and `build-ledger.md` — but a fresh clone starts at the template's seed state, so a build's lessons would otherwise be stranded in its clone. After `RETROSPECTIVE.md` is written (on PASS *or* UNRECOVERABLE), the orchestrator runs `.claude/scripts/harvest.sh begin`, merges the build's new probes, lessons, and one build-ledger row into a `.harvest/` worktree cut from the template's latest `main`, then runs `harvest.sh finish "<summary>"` — which verifies nothing else leaked into the diff, pushes a `harvest/<timestamp>` branch, and opens a PR against the template. You review and merge; the next clone inherits the accumulated memory. The `build-ledger.md` table (one row per build) is also the calibration record for the Acceptance-Score threshold ratchet.
 
 **Q: What does it mean that the pipeline is "adversarial"?**
 
