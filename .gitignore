@@ -18,4 +18,3 @@ __pycache__/
 
 # Harvest-back worktree (transient; see .claude/scripts/harvest.sh)
 .harvest/
-.harvest-backfill/
