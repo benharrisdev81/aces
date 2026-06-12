@@ -26,4 +26,9 @@ Columns:
 
 | Date | Concept | Rounds | Verdict | Final Score | Thr | Probes+ | Lessons+ | Notes |
 |---|---|---|---|---|---|---|---|---|
-| _(no builds harvested yet)_ | | | | | | | | |
+| 2026-05-14 | cyberpunk-spades | 2 | PASS | — | — | 0 | 0 | Pre-Acceptance-Score era (Tier-2 avg 8.0); R1 fail on debrief/scoring flow, fixed R2 |
+| 2026-05-16 | last-war-companion | 1 | PASS | — | — | 0 | 0 | Pre-score era (Tier-2 avg 7.75); streaming Anthropic API integration; UX fixes in-round |
+| 2026-05-18 | texas-holdem | 3 | PASS | — | — | 0 | 0 | Pre-score era (Tier-2 avg 8.3); MTT multi-table wiring took two extra rounds |
+| 2026-05-20 | math-runner | 1 | PASS | — | — | 0 | 2 | Pre-score era (Tier-2 avg 8.0); DC landed 4 CRIT in-round; Architect MODs (unseeded RNG) accepted at PASS |
+| 2026-06-02 | cipher-diary (gan-trial-one) | 2 | PASS | 7.0 | 6.5 | 2 | 2 | Hidden-overlay CRIT + pre-auth stack leak; clean 2-round convergence under old 5.5/6.5 ratchet |
+| 2026-06-09 | card-game (Parlour suite) | 2 | PASS | 7.5 | 6.5 | 2 | 1 | Gate precedence proved out: EVAL_PASS held below ratchet by open Architect MODs until R2 cleanup |

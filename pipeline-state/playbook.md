@@ -45,3 +45,43 @@ of their working sets preserves the adversarial game's independence.
 ---
 
 <!-- append new lessons below; never reorder existing entries -->
+
+### lesson-mobile-viewport-before-handoff
+- **Added**: 2026-06-11 (backfill from pre-protocol builds)
+- **Source**: Design Critic round-1 FAILs in math-runner (4 CRITICAL), Cipher Diary (1 CRITICAL), Parlour card-game suite (2 CRITICAL)
+- **Seen**: 3
+- **Lesson**: The single most common round-1 FAIL across builds is the Design Critic landing CRITICALs at the smallest viewport — verify the 375px experience before handoff, not after.
+- **Why it matters**: Three of the first six builds lost round 1 to mobile-layout CRITICALs (clipped hand fans, input-swallowing overlays, broken touch flows), each costing a full revision pass.
+- **How to apply**: Before writing VERIFY_NOTES.md, walk every primary flow at 375×667 in both empty and populated states; confirm each load-bearing control is visible (`getBoundingClientRect()` inside the viewport) and actually receives clicks/taps (`document.elementFromPoint` hit-test), then re-check at 768 and 1440.
+
+### lesson-thread-the-seeded-rng-everywhere
+- **Added**: 2026-06-11 (backfill from pre-protocol builds)
+- **Source**: Architect MODERATEs in math-runner (unseeded boss attack picking) and Parlour card-game suite (Gin `Math.random` leak; duplicated UI PRNG)
+- **Seen**: 2
+- **Lesson**: When the spec asserts any determinism or reproducibility invariant, every randomness consumer must thread the single canonical seeded RNG — no `Math.random`, `Date.now`-derived choices, or private PRNG copies anywhere in domain logic.
+- **Why it matters**: A single unseeded call on a secondary branch (easy difficulty, fallback path, visual variant) silently breaks "bit-for-bit restore" claims and reliably surfaces as an Architect MODERATE that suppresses the Acceptance Score.
+- **How to apply**: Put the seeded RNG in one module, inject it into every consumer (including UI-side cosmetic randomness if it feeds persisted state), and grep the domain layer for `Math.random|Date.now|getRandomValues|performance.now` as a pre-handoff gate.
+
+### lesson-custom-error-handler-before-review
+- **Added**: 2026-06-11 (backfill from pre-protocol builds)
+- **Source**: Cipher Diary Evaluator finding E1 (pre-auth stack-trace/path disclosure via Express default error handler)
+- **Seen**: 1
+- **Lesson**: Install a custom production error handler (uniform, body-free error shape; no stack, no paths) as part of server scaffolding, before any endpoint is written.
+- **Why it matters**: Framework default error handlers (Express/body-parser et al.) return stack traces with absolute filesystem paths on malformed input — reachable pre-auth, this is information disclosure to any network client and a guaranteed Evaluator security finding.
+- **How to apply**: Add the error-handling middleware in the same commit as the server skeleton; verify by sending `{bad json` with `Content-Type: application/json` to an unauthenticated endpoint and confirming the response contains no stack frames or paths.
+
+### lesson-hidden-attribute-loses-to-display-css
+- **Added**: 2026-06-11 (backfill from pre-protocol builds)
+- **Source**: Cipher Diary Design Critic CRITICAL C1 (lock overlay swallowed all pointer/touch input)
+- **Seen**: 1
+- **Lesson**: Never toggle visibility with the HTML `hidden` attribute on an element whose CSS also sets `display` — the class rule overrides the UA's `[hidden]{display:none}` and the "hidden" element stays painted and intercepting input.
+- **Why it matters**: A nominally hidden full-viewport overlay (`position:fixed; inset:0`) that keeps `pointer-events` makes every control beneath it unreachable — fatal on touch viewports, and it reads as totally broken to a reviewer even though the DOM "looks" right.
+- **How to apply**: Drive view/overlay toggling with explicit `display:none` utility classes or by mounting/unmounting nodes; if `hidden` is used anyway, add a guard style `[hidden]{display:none !important}` and hit-test primary controls after every overlay state change.
+
+### lesson-frame-fit-needs-per-element-proof
+- **Added**: 2026-06-11 (backfill from pre-protocol builds)
+- **Source**: Parlour card-game suite Design Critic CRITICAL (hand fans clipped off-frame at 375px under `overflow:hidden`)
+- **Seen**: 1
+- **Lesson**: A "fills the frame / never scrolls / nothing clipped" requirement cannot be verified with page-level scroll metrics — `overflow:hidden` containers swallow clipped content silently, so prove frame-fit per element.
+- **Why it matters**: Page-level checks (`scrollWidth == clientWidth`) pass while required interactive content (the player's own cards) sits unreachable past a hidden-overflow fold, which the Design Critic scores CRITICAL.
+- **How to apply**: At the smallest required viewport, enumerate load-bearing elements and assert each `getBoundingClientRect()` lies inside the viewport box, in both empty and populated states (resume banners and toasts are what push the last item over the fold).
