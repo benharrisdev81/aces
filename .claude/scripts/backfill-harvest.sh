@@ -16,7 +16,8 @@
 #   ... merge distilled entries into .harvest/pipeline-state/*.md ...
 #   .claude/scripts/harvest.sh finish "Backfill: <n> prior builds"
 #
-# .harvest-backfill/ is gitignored — evidence never lands in the template.
+# Delete .harvest-backfill/ after the combined harvest PR is opened —
+# evidence is working material and never lands in the template.
 
 set -euo pipefail
 
