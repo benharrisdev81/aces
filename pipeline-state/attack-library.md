@@ -6,6 +6,11 @@ The discriminators' growing test set. Confirmed flaws landed in any round of
 any build are distilled into reusable probes here, so the test surface grows
 across builds and the Generator cannot converge on a fixed beatable rubric.
 
+Builds run in per-build clones of the template repo: new probes return to
+the template through the harvest-back protocol (CLAUDE.md Responsibility
+#17) as a reviewable PR. Harvest-time dedup is checked against the
+template's current `main`, not the clone's snapshot.
+
 ## How reviewers read this file (sharded — do not load the whole file)
 
 The library is **sharded by dimension** so each reviewer loads only its slice

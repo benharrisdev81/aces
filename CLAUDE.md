@@ -20,6 +20,13 @@ outcomes are recorded as Generator-vs-Discriminator results in
 grows monotonically across rounds and across builds. See "Adversarial
 Game Mechanics" below.
 
+Builds typically run in a **fresh clone of this template repository** — one
+clone per build. A clone's `pipeline-state/` starts at the template's seed
+state, and the files designed to compound across builds (`attack-library.md`,
+`playbook.md`, `build-ledger.md`) flow back to the template through the
+Harvest-Back Protocol below. Without that step, a build's lessons are
+stranded in its clone.
+
 ## Long Turns Are Normal
 
 Fable 5 turns on hard tasks run for many minutes at `high` effort, and a
@@ -131,7 +138,8 @@ single sub-agent can:
     confirmed real (not withdrawn via `CONFLICT.md` adjudication), distill it
     into a probe and append it to the matching dimension shard of
     `pipeline-state/attack-library.md` using that file's schema and
-    append-only/dedup/retirement policy. The library persists across builds.
+    append-only/dedup/retirement policy. The library persists across builds
+    via the harvest-back protocol (Responsibility #17).
 
 14. **False-positive accounting (honest auditor).** When `CONFLICT.md`
     adjudication (or a subsequent Evaluator round) withdraws a finding a
@@ -167,7 +175,20 @@ single sub-agent can:
     append/dedup/retire policy. The playbook is the Generator's cross-build
     memory (the defensive mirror of the attack library) and is read by the
     Generator only — never pass it to a reviewer, so the discriminators'
-    probe surface stays independent.
+    probe surface stays independent. Lessons return to the template via the
+    harvest-back protocol (Responsibility #17).
+
+17. **Harvest-back (cross-build memory return).** Builds run in per-build
+    clones, so probes, lessons, and calibration data do not accumulate in
+    the template by themselves. After Responsibilities #13 and #16 are
+    complete (post-`RETROSPECTIVE.md`, on PASS **or** UNRECOVERABLE — failed
+    builds usually teach the most), execute the Harvest-Back Protocol below:
+    `.claude/scripts/harvest.sh` stages the template's latest `main` in a
+    `.harvest/` worktree, the orchestrator merges this build's new
+    attack-library probes, playbook lessons, and one `build-ledger.md` row
+    into it, and the script commits, pushes a `harvest/<timestamp>` branch,
+    and opens a PR against the template. The user's merge review is the
+    dedup/quality backstop; the next clone inherits whatever merges.
 
 ## Resume Protocol
 
@@ -276,6 +297,46 @@ State files that realize the game:
 The orchestrator's responsibilities #11–#14 above own the writes. Reviewers
 emit `score-block` counts and probe findings; the orchestrator runs the
 script and composes the round totals.
+
+## Harvest-Back Protocol (Cross-Build Memory)
+
+Each build runs in its own clone of this template, so nothing accumulates in
+the template by default. Three files are designed to compound across builds:
+`pipeline-state/attack-library.md` (discriminator probes),
+`pipeline-state/playbook.md` (Generator lessons), and
+`pipeline-state/build-ledger.md` (one summary row per build — the substrate
+for threshold recalibration). The harvest-back protocol returns a finished
+build's deltas to the template as a reviewable PR.
+
+**When:** after `RETROSPECTIVE.md` is written and Responsibilities #13
+(attack-library harvesting) and #16 (playbook harvesting) have run in the
+clone. Harvest UNRECOVERABLE builds too.
+
+**Steps** (the script does the git plumbing; the orchestrator does the
+content work between the two calls):
+
+1. Run `.claude/scripts/harvest.sh begin`. It fetches `origin/main` and
+   creates a `harvest/<timestamp>` branch in a `.harvest/` worktree — the
+   template's latest state, untouched by this build's working tree.
+2. Merge this build's **new** entries into the worktree's copies:
+   - new probes → end of their shard in `.harvest/pipeline-state/attack-library.md`
+   - new lessons → end of `.harvest/pipeline-state/playbook.md`
+   - one build row → the table in `.harvest/pipeline-state/build-ledger.md`
+
+   Dedup against the **fetched** versions, not this clone's snapshot — the
+   template may have advanced since the clone was cut. A duplicate increments
+   the existing entry's `Seen:` count instead of being re-added. Append-only,
+   stable-first ordering, and the no-weakening/retirement rule (template
+   author only) all apply.
+3. Run `.claude/scripts/harvest.sh finish "<one-line build summary>"`. It
+   verifies only the three harvestable files changed (anything else aborts —
+   build artifacts never flow back to the template), commits, pushes, and
+   opens the PR with a reviewer checklist.
+4. The user reviews and merges. Merge review is the dedup/quality backstop:
+   low-signal probes or lessons get cut there, before they tax every future
+   build.
+
+`.claude/scripts/harvest.sh abort` discards an in-progress harvest.
 
 ## Conflict and Escalation Handling
 
@@ -386,7 +447,9 @@ script and composes the round totals.
 | `pipeline-state/scoreboard.md` | Orchestrator (per-round Generator-vs-Discriminator outcome) | Orchestrator, user |
 | `pipeline-state/attack-library.md` | Orchestrator (appends confirmed defects) + reviewer agents (append novel probes to their shard) | All reviewer agents (own shard only) |
 | `pipeline-state/playbook.md` | Orchestrator (post-build lesson harvesting) | Generator only (never reviewers) |
+| `pipeline-state/build-ledger.md` | Orchestrator (one row per build, via harvest PR) | Orchestrator, user (threshold calibration) |
 | `.claude/scripts/score.py` | Template (canonical calculator) | Orchestrator (runs each round) |
+| `.claude/scripts/harvest.sh` | Template (canonical plumbing) | Orchestrator (runs post-RETROSPECTIVE) |
 | `pipeline-state/builds/{timestamp}/` | Orchestrator (per-build dir) | Orchestrator |
 | `pipeline-state/current` | Orchestrator (symlink or pointer to active build) | All agents |
 
@@ -413,6 +476,7 @@ check it and surface a clear error on mismatch rather than parsing garbage.
 | `pipeline-state/scoreboard.md` | `scoreboard-v1` |
 | `pipeline-state/attack-library.md` | `attack-library-v2` |
 | `pipeline-state/playbook.md` | `playbook-v1` |
+| `pipeline-state/build-ledger.md` | `build-ledger-v1` |
 
 ## Sub-Agent Locations
 - `.claude/agents/clarifier.md`

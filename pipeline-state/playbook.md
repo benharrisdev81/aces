@@ -14,7 +14,9 @@ of their working sets preserves the adversarial game's independence.
   code is written.
 - **Written by**: the orchestrator at the end of each build (after
   `RETROSPECTIVE.md` exists), distilling that build's lessons — especially
-  its "Persistent Failure Patterns" — into entries here.
+  its "Persistent Failure Patterns" — into entries here. Builds run in
+  per-build clones, so new lessons return to the template through the
+  harvest-back protocol (CLAUDE.md Responsibility #17).
 
 ## Entry policy (append, dedup, retire)
 
