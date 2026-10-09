@@ -192,7 +192,7 @@ contradictory across questions. Do not re-ask. For each such case:
 ## Output Format
 
 In `mode: report`, write this report to `clarifier_output.md` in the project
-root. The Planner reads it from there.
+root. Line 1 of the file is `<clarification_report>`, with nothing before it.
 
 <clarification_report>
 

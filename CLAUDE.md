@@ -348,10 +348,14 @@ content work between the two calls):
       text if more than 4) and collect the answers verbatim.
    c. Invoke the Clarifier again with `mode: report`, the concept, its own questions,
       and the user's verbatim answers. It writes `clarifier_output.md` itself.
+   d. Confirm `clarifier_output.md` exists and line 1 is `<clarification_report>`.
 
 2. **Invoke the Planner sub-agent** with the content of `clarifier_output.md` as its
-   input prompt. Capture its full output and write it to `planner_output.md`
-   in the project root. This is the only copy of the spec.
+   input prompt. It writes `planner_output.md` itself; this is the only copy of
+   the spec. Confirm the file exists and line 1 is `format-version: planner-v1`.
+
+   If either check in steps 1d or 2 fails, re-invoke that agent once and state the
+   problem. If it fails again, write `ESCALATION_REQUESTED.md`.
 
 3. **Invoke the Generator sub-agent.**
    It reads `planner_output.md`, builds the app into `output/`, and writes
@@ -418,7 +422,7 @@ content work between the two calls):
 | File | Written by | Read by |
 |---|---|---|
 | `clarifier_output.md` | Clarifier (`mode: report`) | Planner |
-| `planner_output.md` | Orchestrator (from Planner output) | Generator, Architect, Design Critic, Security Prober, Evaluator |
+| `planner_output.md` | Planner | Generator, Architect, Design Critic, Security Prober, Evaluator |
 | `output/` | Generator | Architect, Design Critic, Security Prober, Evaluator |
 | `HANDOFF.md` | Generator | Architect, Design Critic, Security Prober, Evaluator |
 | `BUILD_NOTES.md` | Generator | Architect, Evaluator |
