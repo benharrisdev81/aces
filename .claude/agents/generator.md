@@ -2,6 +2,7 @@
 name: generator
 description: Full-stack implementation and Acceptance-Score maximizer — reads spec, builds the application
 model: claude-fable-5
+effort: high
 disallowedTools: Agent
 ---
 

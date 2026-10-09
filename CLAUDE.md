@@ -41,20 +41,17 @@ in `cost.md`).
 
 ## Model and Effort Tiering
 
-Each sub-agent is pinned to a model in its agent-file frontmatter (`model:`).
-Effort is a harness-level setting, not a per-agent frontmatter key — the
-values below are operating guidance per Anthropic's Fable 5 recommendation
-(default `high`; lower levels often exceed prior-model `xhigh`, so do not
-reach for `xhigh` reflexively).
+Each sub-agent pins `model:` and `effort:` in its frontmatter; the table below
+mirrors those values.
 
-| Agent | Model | Effort guidance |
-|---|---|---|
-| Clarifier | `claude-sonnet-4-6` | medium — no tools, single structured output |
-| Planner | `claude-fable-5` | high — spec quality cascades downstream |
-| Generator | `claude-fable-5` | high; try `xhigh` only on builds that stall |
-| Architect | `claude-fable-5` | high |
-| Design Critic | `claude-fable-5` | high |
-| Evaluator | `claude-fable-5` (security probes fall back to `claude-opus-4-8` — see Responsibility #15) | high |
+| Agent | `model` | `effort` | Tools (frontmatter) |
+|---|---|---|---|
+| Clarifier | `claude-sonnet-4-6` | `high` | `tools: Write` |
+| Planner | `claude-fable-5` | `high` | `tools: Write` |
+| Generator | `claude-fable-5` | `high` | `disallowedTools: Agent` |
+| Architect | `claude-fable-5` | `high` | `tools: Read, Grep, Glob, Bash, Write` |
+| Design Critic | `claude-fable-5` | `high` | `tools: Read, Bash, Write, mcp__playwright` |
+| Evaluator | `claude-fable-5` (security probes fall back to `claude-opus-4-8` — see Responsibility #15) | `high` | `tools: Read, Grep, Glob, Bash, Write, mcp__playwright` |
 
 ## How to Run the Pipeline
 - **Start a new build:** "Build [product concept]"

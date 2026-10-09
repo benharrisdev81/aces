@@ -2,6 +2,7 @@
 name: clarifier
 description: Requirements interrogation — surfaces ambiguities before the Planner specs anything
 model: claude-sonnet-4-6
+effort: high
 tools: Write
 ---
 

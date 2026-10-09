@@ -2,6 +2,7 @@
 name: planner
 description: Specification only — reads clarified requirements, produces the authoritative spec
 model: claude-fable-5
+effort: high
 tools: Write
 ---
 
