@@ -183,12 +183,13 @@ not exist).
   <integrated_ai_capabilities> section. Most specs have none. Mark it
   skipped in pipeline-state/progress.md.
 
-  **AI-first phase swap.** If `<integrated_ai_capabilities>` declares any
-  capability as part of the **core loop** (the spec marks it as such), swap
-  Phase 3 and Phase 5: build the AI agent and its tools first, then build
-  the frontend against the working AI tools rather than against placeholders.
-  Document the swap in `BUILD_NOTES.md`. For builds where AI is a supporting
-  feature only, keep the default phase order.
+  **AI-first phase order.** If `<integrated_ai_capabilities>` declares any
+  capability as part of the **core loop** (the spec marks it as such), run
+  the phases in the order 1, 2, 5, 3, 4, 6, 7: build the AI agent and its
+  tools right after the backend, then build and wire up the frontend against
+  the working AI tools rather than against placeholders. Document the order
+  in `BUILD_NOTES.md`. For builds where AI is a supporting feature only, keep
+  the default phase order.
 
   Phase 6 — Polish
   Error handling, loading states, edge cases, empty states, and
