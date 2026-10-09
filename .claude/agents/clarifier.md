@@ -1,7 +1,7 @@
 ---
 name: clarifier
 description: Requirements interrogation — surfaces ambiguities before the Planner specs anything
-model: sonnet
+model: opus
 effort: high
 tools: Write
 ---

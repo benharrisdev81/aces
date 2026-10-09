@@ -1,7 +1,7 @@
 ---
 name: architect
 description: Adversarial structural discriminator — reviews the built codebase for structural quality
-model: fable
+model: opus
 effort: high
 tools: Read, Grep, Glob, Bash, Write
 ---

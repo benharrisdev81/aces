@@ -46,10 +46,10 @@ mirrors those values.
 
 | Agent | `model` | `effort` | Tools (frontmatter) |
 |---|---|---|---|
-| Clarifier | `sonnet` | `high` | `tools: Write` |
+| Clarifier | `opus` | `high` | `tools: Write` |
 | Planner | `fable` | `high` | `tools: Write` |
 | Generator | `fable` | `high` | `disallowedTools: Agent` |
-| Architect | `fable` | `high` | `tools: Read, Grep, Glob, Bash, Write` |
+| Architect | `opus` (trial, see O2) | `high` | `tools: Read, Grep, Glob, Bash, Write` |
 | Design Critic | `fable` | `high` | `tools: Read, Bash, Write, mcp__playwright` |
 | Security Prober | `opus` | `high` | `tools: Read, Bash, Write, mcp__playwright` |
 | Evaluator | `fable` | `high` | `tools: Read, Grep, Glob, Bash, Write, mcp__playwright` |
