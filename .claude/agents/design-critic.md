@@ -115,14 +115,13 @@ data dependency:
 
 ### Step 3 — Confirm Browser Testing Tools
 
-Detect browser automation capability directly — do not ask the user and wait.
-Attempt to initialize the configured browser tool (e.g., Playwright MCP). If
-it responds, proceed to Step 4.
+The `playwright` MCP server is configured in `.mcp.json`; use its browser
+tools for all testing.
 
-If no browser tool is available or initialization fails, write
-`ESCALATION_REQUESTED.md` (format-version `escalation-v1`) stating what you
-attempted, the exact error, and one bounded question (e.g., "Enable
-Playwright MCP, or should I review API-reachable behavior only via curl?").
+If the `playwright` tools are missing or fail on first use, write
+`ESCALATION_REQUESTED.md` (format-version `escalation-v1`) stating the exact
+error and one bounded question (for example, "The playwright MCP server did
+not start: fix it, or should I review API-reachable behavior only via curl?").
 Then stop. The orchestrator pauses the build without consuming a round.
 
 ### Step 4 — Start the Application
