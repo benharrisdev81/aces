@@ -77,10 +77,9 @@ single sub-agent can:
    files. Update it at the start of every reviewer cycle (parallel Architect +
    Design Critic, then Evaluator). See "Round state file" below.
 
-2. **Build identity.** On a new build, create `pipeline-state/builds/{ISO-timestamp}/`
-   and point the symlink (or copy, if symlinks are unavailable on the host)
-   `pipeline-state/current` to it. All round-scoped state lives under the
-   current build's directory. Older builds are preserved for reference.
+2. **One build per clone.** Each build runs in its own clone, so build state
+   lives in the project root and directly in `pipeline-state/`. Do not create
+   per-build subdirectories or pointers.
 
 3. **Skip-unaffected-reviewers.** For revision rounds, inspect what changed and
    skip reviewers whose dimensions are not affected. See "Skip-unaffected-reviewers
@@ -130,9 +129,9 @@ single sub-agent can:
 12. **Scoreboard.** After each Evaluator verdict, append one row to
     `pipeline-state/scoreboard.md` classifying the round as Generator WIN
     (all reviewers PASS on first contact and score ≥ threshold),
-    Discriminator WIN (any reviewer landed a finding forcing a revision), or
-    Draw (CONDITIONAL PASS). The flaw-landed column names the highest-severity
-    finding landed (or `none` on a Generator WIN).
+    or Discriminator WIN (any reviewer landed a finding forcing a revision).
+    The flaw-landed column names the highest-severity finding landed (or
+    `none` on a Generator WIN).
 
 13. **Attack-library harvesting.** On any reviewer FAIL, once the finding is
     confirmed real (not withdrawn via `CONFLICT.md` adjudication), distill it
@@ -206,15 +205,14 @@ When invoked with "Resume build":
    - If `ESCALATION_REQUESTED.md` exists and is unanswered: surface the question to the user; pause.
    - If `CONFLICT.md` exists and is unresolved: surface to the user; pause.
    - If Evaluator has a round IN PROGRESS: re-invoke the Evaluator.
-   - If Evaluator returned CONDITIONAL PASS and the targeted fix is not yet logged: re-invoke the Generator with the eval report for the targeted fix.
    - If the Architect or Design Critic has a round IN PROGRESS: re-invoke whichever is in progress (they run concurrently; re-launch both in parallel if both are mid-round).
    - If one reviewer completed round N but the other never started (and is not skipped under the skip-unaffected policy): invoke the missing reviewer.
    - If either reviewer issued FAIL for round N but `REVISION COMPLETE — Round N` is absent from progress.md: re-invoke the Generator once, passing the path(s) of every failing report (`architecture_review_round_N.md` and/or `design_critique_round_N.md`) for a single combined revision pass.
    - If both reviewers completed round N (PASS, or FAIL with the combined revision logged) but the Evaluator has not yet run for that round: re-invoke the Evaluator.
    - If Generator is mid-phase (session.md shows incomplete phase): re-invoke the Generator, instructing it to read `pipeline-state/session.md` and continue from the last completed feature.
    - If a phase boundary was the last log entry in progress.md (HANDOFF COMPLETE not present): re-invoke the Generator at the next phase.
-   - If only Planner has completed (plan.md is populated, progress.md is empty): re-invoke the Generator from Phase 1.
-   - If only Clarifier has completed (clarifier_output.md exists, plan.md is absent or empty): re-invoke the Planner with the content of clarifier_output.md.
+   - If only Planner has completed (planner_output.md is populated, progress.md is empty): re-invoke the Generator from Phase 1.
+   - If only Clarifier has completed (clarifier_output.md exists, planner_output.md is absent or empty): re-invoke the Planner with the content of clarifier_output.md.
 10. Continue the pipeline forward from that point.
 
 ## Round State File
@@ -357,9 +355,8 @@ content work between the two calls):
    Capture its full output and write it to `clarifier_output.md` in the project root.
 
 2. **Invoke the Planner sub-agent** with the content of `clarifier_output.md` as its
-   input prompt. Capture its full output and write it to BOTH:
-   - `pipeline-state/plan.md` (canonical record)
-   - `planner_output.md` (project root, for agent compatibility)
+   input prompt. Capture its full output and write it to `planner_output.md`
+   in the project root. This is the only copy of the spec.
 
 3. **Invoke the Generator sub-agent.**
    It reads `planner_output.md`, builds the app into `output/`, and writes
@@ -368,6 +365,10 @@ content work between the two calls):
 
    Write `pipeline-state/round.md` with `Current Round: 1` immediately before
    the first reviewer cycle.
+
+   If `planner_output.md` contains a `<runtime_secrets>` section, confirm
+   every listed environment variable is set before any reviewer starts the
+   app. If one is missing, pause the build and ask the user to set it.
 
 4. **Invoke the Architect and Design Critic sub-agents concurrently.**
    They are independent — launch both in parallel (subject to the
@@ -405,11 +406,6 @@ content work between the two calls):
      path `eval_report_round_N.md`. The Generator must read that file before
      beginning its revision. Repeat from Step 4 (launch the reviewer batch,
      applying the skip-unaffected policy).
-   - On CONDITIONAL PASS: it writes `eval_report_round_N.md` with verdict
-     `CONDITIONAL PASS`. Re-invoke the Generator for a single targeted fix
-     pass (not a full revision round). Re-invoke the Evaluator only against
-     the conditional criterion. On success, proceed to PASS. On failure,
-     downgrade to FAIL and continue normally.
    - On PASS: it writes `EVAL_PASS.md` and `RETROSPECTIVE.md`. Pipeline is
      complete.
    - After 5 failed rounds: Evaluator writes `EVAL_UNRECOVERABLE.md` and
@@ -420,7 +416,6 @@ content work between the two calls):
 |---|---|---|
 | `clarifier_output.md` | Orchestrator (from Clarifier output) | Planner |
 | `planner_output.md` | Orchestrator (from Planner output) | Generator, Architect, Design Critic, Evaluator |
-| `pipeline-state/plan.md` | Orchestrator (canonical copy) | — |
 | `output/` | Generator | Architect, Design Critic, Evaluator |
 | `HANDOFF.md` | Generator | Architect, Design Critic, Evaluator |
 | `BUILD_NOTES.md` | Generator | Architect, Evaluator |
@@ -436,7 +431,7 @@ content work between the two calls):
 | `pipeline-state/round.md` | Orchestrator | All reviewer agents |
 | `pipeline-state/index.md` | Orchestrator | All agents (at-a-glance state) |
 | `pipeline-state/progress.md` | Generator (phase transitions + combined revisions, with Modified files lists) | Orchestrator, Architect, Design Critic |
-| `pipeline-state/checkpoint.md` | Evaluator (round state, conditional-pass flag) | Orchestrator |
+| `pipeline-state/checkpoint.md` | Evaluator (round state) | Orchestrator |
 | `pipeline-state/architecture-checkpoint.md` | Architect (round state) | Orchestrator |
 | `pipeline-state/ux-checkpoint.md` | Design Critic (round state) | Orchestrator |
 | `pipeline-state/session.md` | Generator (per-feature progress) | Orchestrator (resume) |
@@ -450,8 +445,6 @@ content work between the two calls):
 | `pipeline-state/build-ledger.md` | Orchestrator (one row per build, via harvest PR) | Orchestrator, user (threshold calibration) |
 | `.claude/scripts/score.py` | Template (canonical calculator) | Orchestrator (runs each round) |
 | `.claude/scripts/harvest.sh` | Template (canonical plumbing) | Orchestrator (runs post-RETROSPECTIVE) |
-| `pipeline-state/builds/{timestamp}/` | Orchestrator (per-build dir) | Orchestrator |
-| `pipeline-state/current` | Orchestrator (symlink or pointer to active build) | All agents |
 
 ## Format-Version Headers
 

@@ -180,15 +180,16 @@ not exist).
   Implement the integrated AI capabilities defined in the spec. See
   Directive 5 for what "integrated" means.
   SKIP this phase entirely if the spec contains no
-  <integrated_ai_capabilities> section — the user explicitly opted out
-  of AI integration. Mark it skipped in pipeline-state/progress.md.
+  <integrated_ai_capabilities> section. Most specs have none. Mark it
+  skipped in pipeline-state/progress.md.
 
-  **AI-first phase swap.** If `<integrated_ai_capabilities>` declares any
-  capability as part of the **core loop** (the spec marks it as such), swap
-  Phase 3 and Phase 5: build the AI agent and its tools first, then build
-  the frontend against the working AI tools rather than against placeholders.
-  Document the swap in `BUILD_NOTES.md`. For builds where AI is a supporting
-  feature only, keep the default phase order.
+  **AI-first phase order.** If `<integrated_ai_capabilities>` declares any
+  capability as part of the **core loop** (the spec marks it as such), run
+  the phases in the order 1, 2, 5, 3, 4, 6, 7: build the AI agent and its
+  tools right after the backend, then build and wire up the frontend against
+  the working AI tools rather than against placeholders. Document the order
+  in `BUILD_NOTES.md`. For builds where AI is a supporting feature only, keep
+  the default phase order.
 
   Phase 6 — Polish
   Error handling, loading states, edge cases, empty states, and
@@ -231,9 +232,9 @@ before the Evaluator does.
 
 ### 5. Integrate Agentic Features
 
-**If the spec contains no `<integrated_ai_capabilities>` section, skip this
-directive entirely. Phase 5 is omitted for builds that explicitly opted out
-of AI integration. Do not add any AI features; proceed to Phase 6.**
+**This directive applies only when the spec contains an
+`<integrated_ai_capabilities>` section. Otherwise skip it and Phase 5, add no
+AI features, and proceed to Phase 6.**
 
 Implement the AI capabilities from the spec as a proper, built-in AI agent —
 not a chat wrapper. A proper integrated agent means:
@@ -524,9 +525,9 @@ this list before writing HANDOFF.md.
 
   [ ] Every AI capability in the spec's Integrated AI Capabilities section
       is implemented with real tool use that drives application primitives.
-      (Omit this check entirely if the spec contains no
-      <integrated_ai_capabilities> section — AI integration was explicitly
-      bypassed and must not be added.)
+      (Skip this check if the spec contains no
+      <integrated_ai_capabilities> section. Do not add AI features the
+      spec does not ask for.)
 
   [ ] The application starts without errors from the `output/` directory.
 

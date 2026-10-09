@@ -17,7 +17,7 @@ Columns:
 - **Date** — build completion date (UTC)
 - **Concept** — short product slug
 - **Rounds** — evaluation rounds consumed
-- **Verdict** — PASS / CONDITIONAL→PASS / UNRECOVERABLE
+- **Verdict**: PASS / UNRECOVERABLE
 - **Final Score** — Acceptance Score of the final round
 - **Thr** — threshold in force at the final round
 - **Probes+** — attack-library probes added by this build's harvest
