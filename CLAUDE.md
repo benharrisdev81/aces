@@ -6,7 +6,7 @@ After each Generator build (or revision), the Architect (structural quality) and
 Critic (usability) review **concurrently** — they are independent: the Architect reads only
 the code, the Design Critic uses only the live app. If either lands findings, the Generator
 makes a **single combined revision pass** addressing both reports, then the Evaluator runs
-functional tests. The Evaluator can trigger Generator re-runs up to 5 rounds — a Fable 5
+functional tests. The Evaluator can trigger Generator re-runs up to 5 rounds — a Fable
 build that fails 5 consecutive rounds almost certainly has a spec problem (escalation
 territory), not a generation problem.
 
@@ -29,13 +29,13 @@ stranded in its clone.
 
 ## Long Turns Are Normal
 
-Fable 5 turns on hard tasks run for many minutes at `high` effort, and a
+Fable turns on hard tasks run for many minutes at `high` effort, and a
 full build can extend for hours. Do not treat a long-running sub-agent turn
 as hung — `.claude/settings.json` raises bash and MCP tool timeouts, and the
 per-feature `session.md` checkpoint plus the Resume Protocol make
 interruption cheap. Check on a running build asynchronously (status checks
 between agent invocations) rather than blocking on it; never inject
-remaining-token or budget countdowns into a sub-agent's prompt — Fable 5 may
+remaining-token or budget countdowns into a sub-agent's prompt — Fable may
 wrap up prematurely when shown one (cost accounting stays orchestrator-side
 in `cost.md`).
 
@@ -46,12 +46,12 @@ mirrors those values.
 
 | Agent | `model` | `effort` | Tools (frontmatter) |
 |---|---|---|---|
-| Clarifier | `claude-sonnet-4-6` | `high` | `tools: Write` |
-| Planner | `claude-fable-5` | `high` | `tools: Write` |
-| Generator | `claude-fable-5` | `high` | `disallowedTools: Agent` |
-| Architect | `claude-fable-5` | `high` | `tools: Read, Grep, Glob, Bash, Write` |
-| Design Critic | `claude-fable-5` | `high` | `tools: Read, Bash, Write, mcp__playwright` |
-| Evaluator | `claude-fable-5` (security probes fall back to `claude-opus-4-8` — see Responsibility #15) | `high` | `tools: Read, Grep, Glob, Bash, Write, mcp__playwright` |
+| Clarifier | `sonnet` | `high` | `tools: Write` |
+| Planner | `fable` | `high` | `tools: Write` |
+| Generator | `fable` | `high` | `disallowedTools: Agent` |
+| Architect | `fable` | `high` | `tools: Read, Grep, Glob, Bash, Write` |
+| Design Critic | `fable` | `high` | `tools: Read, Bash, Write, mcp__playwright` |
+| Evaluator | `fable` (security probes fall back to `claude-opus-4-8` — see Responsibility #15) | `high` | `tools: Read, Grep, Glob, Bash, Write, mcp__playwright` |
 
 ## How to Run the Pipeline
 - **Start a new build:** "Build [product concept]"
@@ -100,8 +100,8 @@ single sub-agent can:
 
 8. **Cost tracking.** Append a per-round entry to `pipeline-state/cost.md`
    recording approximate tokens consumed. If the cost threshold is reached
-   (default: **US$100 per build**, user-configurable; Fable 5 is $10/$50 per
-   MTok — 2× Opus 4.8), halt and ask the user to confirm continuation.
+   (default: **US$100 per build**, user-configurable), halt and ask the user to
+   confirm continuation.
    Also record any refusal/fallback events (agent, `stop_details.category`,
    retry model) — requests refused before any output are unbilled, and
    fallback credit refunds the prompt-cache cost of the model switch.

@@ -1,14 +1,13 @@
 ---
 name: architect
 description: Adversarial structural discriminator — reviews the built codebase for structural quality
-model: claude-fable-5
+model: fable
 effort: high
 tools: Read, Grep, Glob, Bash, Write
 ---
 
 # Architect Agent
 # Role: Adversarial structural discriminator — evaluates the built codebase for naming consistency, separation of concerns, coupling, scalability, pattern coherence, and security boundaries
-# Model: claude-fable-5 (improved codebase-search/bug-finding recall; effort guidance: high — see CLAUDE.md "Model and Effort Tiering")
 # Reads from: planner_output.md, HANDOFF.md, BUILD_NOTES.md, output/ (source code), architecture_review_round_N-1.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/progress.md (Modified files + Pattern Deviations from prior revision pass, if any), pipeline-state/value-function.md (scoring formula), pipeline-state/attack-library.md (structural probes)
 # Writes to: architecture_review_round_N.md, pipeline-state/architecture-checkpoint.md
 
@@ -325,8 +324,8 @@ Look for:
   dumps) are not blindly included in every model call.
 - **No embedded API keys**: AI provider credentials are environment-driven,
   consistent with the security baseline.
-- **Refusal handling for classifier-gated models**: if the app calls
-  `claude-fable-5`, it must handle `stop_reason: "refusal"` (fallback to
+- **Refusal handling for classifier-gated models**: if the app calls a
+  Fable model, it must handle `stop_reason: "refusal"` (fallback to
   another model, or a user-visible error path) rather than assuming every
   200 response carries content. Missing handling is at minimum MODERATE.
 
