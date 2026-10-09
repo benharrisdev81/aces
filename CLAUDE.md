@@ -77,10 +77,9 @@ single sub-agent can:
    files. Update it at the start of every reviewer cycle (parallel Architect +
    Design Critic, then Evaluator). See "Round state file" below.
 
-2. **Build identity.** On a new build, create `pipeline-state/builds/{ISO-timestamp}/`
-   and point the symlink (or copy, if symlinks are unavailable on the host)
-   `pipeline-state/current` to it. All round-scoped state lives under the
-   current build's directory. Older builds are preserved for reference.
+2. **One build per clone.** Each build runs in its own clone, so build state
+   lives in the project root and directly in `pipeline-state/`. Do not create
+   per-build subdirectories or pointers.
 
 3. **Skip-unaffected-reviewers.** For revision rounds, inspect what changed and
    skip reviewers whose dimensions are not affected. See "Skip-unaffected-reviewers
@@ -212,8 +211,8 @@ When invoked with "Resume build":
    - If both reviewers completed round N (PASS, or FAIL with the combined revision logged) but the Evaluator has not yet run for that round: re-invoke the Evaluator.
    - If Generator is mid-phase (session.md shows incomplete phase): re-invoke the Generator, instructing it to read `pipeline-state/session.md` and continue from the last completed feature.
    - If a phase boundary was the last log entry in progress.md (HANDOFF COMPLETE not present): re-invoke the Generator at the next phase.
-   - If only Planner has completed (plan.md is populated, progress.md is empty): re-invoke the Generator from Phase 1.
-   - If only Clarifier has completed (clarifier_output.md exists, plan.md is absent or empty): re-invoke the Planner with the content of clarifier_output.md.
+   - If only Planner has completed (planner_output.md is populated, progress.md is empty): re-invoke the Generator from Phase 1.
+   - If only Clarifier has completed (clarifier_output.md exists, planner_output.md is absent or empty): re-invoke the Planner with the content of clarifier_output.md.
 10. Continue the pipeline forward from that point.
 
 ## Round State File
@@ -356,9 +355,8 @@ content work between the two calls):
    Capture its full output and write it to `clarifier_output.md` in the project root.
 
 2. **Invoke the Planner sub-agent** with the content of `clarifier_output.md` as its
-   input prompt. Capture its full output and write it to BOTH:
-   - `pipeline-state/plan.md` (canonical record)
-   - `planner_output.md` (project root, for agent compatibility)
+   input prompt. Capture its full output and write it to `planner_output.md`
+   in the project root. This is the only copy of the spec.
 
 3. **Invoke the Generator sub-agent.**
    It reads `planner_output.md`, builds the app into `output/`, and writes
@@ -418,7 +416,6 @@ content work between the two calls):
 |---|---|---|
 | `clarifier_output.md` | Orchestrator (from Clarifier output) | Planner |
 | `planner_output.md` | Orchestrator (from Planner output) | Generator, Architect, Design Critic, Evaluator |
-| `pipeline-state/plan.md` | Orchestrator (canonical copy) | — |
 | `output/` | Generator | Architect, Design Critic, Evaluator |
 | `HANDOFF.md` | Generator | Architect, Design Critic, Evaluator |
 | `BUILD_NOTES.md` | Generator | Architect, Evaluator |
@@ -448,8 +445,6 @@ content work between the two calls):
 | `pipeline-state/build-ledger.md` | Orchestrator (one row per build, via harvest PR) | Orchestrator, user (threshold calibration) |
 | `.claude/scripts/score.py` | Template (canonical calculator) | Orchestrator (runs each round) |
 | `.claude/scripts/harvest.sh` | Template (canonical plumbing) | Orchestrator (runs post-RETROSPECTIVE) |
-| `pipeline-state/builds/{timestamp}/` | Orchestrator (per-build dir) | Orchestrator |
-| `pipeline-state/current` | Orchestrator (symlink or pointer to active build) | All agents |
 
 ## Format-Version Headers
 
