@@ -5,6 +5,18 @@
       "Read(**)",
       "Write(**)",
       "Edit(**)"
+    ],
+    "deny": [
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.config/gh/**)",
+      "Read(**/.env)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(curl * | sh*)",
+      "Bash(sudo *)"
     ]
   },
   "enabledMcpjsonServers": ["playwright"],
