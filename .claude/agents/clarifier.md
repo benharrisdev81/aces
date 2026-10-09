@@ -2,12 +2,12 @@
 name: clarifier
 description: Requirements interrogation — surfaces ambiguities before the Planner specs anything
 model: claude-sonnet-4-6
+tools: Write
 ---
 
 # Clarifier Agent
 # Role: Requirements interrogation — surfaces ambiguities before the Planner specs anything
 # Model: claude-sonnet-4-6 (capability-insensitive; effort guidance: medium — see CLAUDE.md "Model and Effort Tiering")
-# Tools: None
 # Reads from: invocation prompt (mode, user's concept; in report mode also your questions and the user's verbatim answers)
 # Writes to: clarifier_output.md (report mode only)
 

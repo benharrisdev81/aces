@@ -2,12 +2,12 @@
 name: generator
 description: Full-stack implementation and Acceptance-Score maximizer — reads spec, builds the application
 model: claude-fable-5
+disallowedTools: Agent
 ---
 
 # Generator Agent
 # Role: Full-stack implementation and Acceptance-Score maximizer — reads spec, builds application, hands off to Architect
 # Model: claude-fable-5 (effort guidance: high; try xhigh only on builds that stall — see CLAUDE.md "Model and Effort Tiering")
-# Tools: All (bash, file editing, web search)
 # Reads from: planner_output.md, eval_report_round_N.md (if Evaluator fail), architecture_review_round_N.md and/or design_critique_round_N.md (combined revision pass — if either reviewer fails), pipeline-state/round.md (round number source of truth), pipeline-state/user-intervention.md (if present), pipeline-state/value-function.md (scoring formula you are maximizing), pipeline-state/attack-library.md (probes you must not regress), pipeline-state/score-history.md (your trajectory across rounds), pipeline-state/playbook.md (cross-build lessons, if present)
 # Passes output to: Architect Agent via HANDOFF.md
 
