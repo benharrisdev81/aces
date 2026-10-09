@@ -15,9 +15,6 @@ A round is a **Discriminator WIN** if any reviewer landed a confirmed
 finding (CRITICAL/MODERATE for Architect or Design Critic; Tier 1 for
 Evaluator) that forced a revision pass.
 
-CONDITIONAL PASS rounds are recorded as **Draw** — neither side
-unambiguously won.
-
 | Round | Outcome | Score | Flaw landed | Notes |
 |---|---|---|---|---|
 | _(no rounds yet)_ | | | | |

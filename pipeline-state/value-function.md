@@ -125,9 +125,6 @@ consulted if every earlier gate passes.
    independent average. This removes the previous ambiguity where a build
    could pass one gate and fail the other with no stated precedence.
 
-CONDITIONAL PASS retains its existing meaning (one targeted fix pass, capped
-at one per build) and is decided after gates 1–2, exactly as before.
-
 ---
 
 ## Computing the Score
@@ -191,9 +188,6 @@ fp_withdrawn: 0
   the carried penalty from the prior `score-history.md` row so the scalar
   stays comparable across rounds. Carry-forward reads from disk, never from
   the orchestrator's memory of an earlier round.
-- **CONDITIONAL PASS**: scored as the round's Acceptance Score even though
-  a targeted fix follows. The targeted-fix re-evaluation overwrites only the
-  affected penalty term, not the full score.
 - **Generator declines to fix a finding** (disputes it via `CONFLICT.md`):
   the penalty stands until adjudication. If adjudication withdraws the
   finding, it is recorded as a false positive (`fp_withdrawn`) against the

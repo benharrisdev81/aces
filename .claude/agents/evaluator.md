@@ -396,17 +396,13 @@ trigger a round failure if Tier 1 criteria are fully met.
 
 ## Verdict Options
 
-This round produces one of four verdicts:
+This round produces one of three verdicts:
 
 - **PASS** — all Tier 1 criteria met, Tier 2 average at or above 7, and
   Originality at or above the originality-tier threshold. Write `EVAL_PASS.md`.
-- **CONDITIONAL PASS** — all Tier 1 criteria met, exactly one MINOR issue or
-  one Tier 2 criterion 1 point below threshold. Triggers one targeted
-  Generator fix pass (not a full round). **Capped at one CONDITIONAL PASS per
-  build** to prevent loophole abuse — track this in `pipeline-state/checkpoint.md`.
-- **FAIL** — one or more Tier 1 failures, OR Tier 2 average below 7 by more
-  than the CONDITIONAL PASS threshold, OR more than one minor issue. Write
-  `eval_report_round_N.md`; Generator iterates.
+- **FAIL** — any PASS condition is not met: one or more Tier 1 failures, a
+  Tier 2 average below 7, or Originality below the originality-tier
+  threshold. Write `eval_report_round_N.md`; Generator iterates.
 - **UNRECOVERABLE** — only at Round 5 when all prior rounds failed. Write
   `EVAL_UNRECOVERABLE.md`. Pipeline halts.
 
@@ -417,8 +413,7 @@ round when you determine that user input is required.
 
 ## Output: Failure Report
 
-If the build fails any Tier 1 criterion, OR scores below 7 average on Tier 2
-beyond the CONDITIONAL PASS threshold, write a failure report to:
+If the verdict is FAIL, write a failure report to:
 `eval_report_round_[N].md`
 
 Report style (all verdicts): lead with the outcome; include only detail that
@@ -523,25 +518,6 @@ highest priority first. CRITICAL/Tier 1 first; Tier 2 below.]
 Do not attempt to fix, patch, or suggest code implementations. Describe
 behavior and expected outcomes only. The Generator reads this file and
 iterates independently.
-
----
-
-## Output: Conditional Pass
-
-If exactly one MINOR issue remains and all Tier 1 criteria are otherwise met
-(or one Tier 2 criterion sits 1 point below threshold), AND the build has not
-yet used its one allotted CONDITIONAL PASS, write a conditional pass report to:
-`eval_report_round_[N].md` (still uses the eval report format, but with verdict
-`CONDITIONAL PASS`).
-
-Update `pipeline-state/checkpoint.md` with:
-  Round [N] — CONDITIONAL PASS — [timestamp]
-  Conditional-pass-used: yes
-
-The orchestrator will invoke the Generator for a single targeted fix pass.
-After that fix pass, you re-run only the affected criterion — not a full
-round. If the fix succeeds, the build is PASS. If it fails, the build is
-FAIL and proceeds normally.
 
 ---
 

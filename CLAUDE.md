@@ -130,9 +130,9 @@ single sub-agent can:
 12. **Scoreboard.** After each Evaluator verdict, append one row to
     `pipeline-state/scoreboard.md` classifying the round as Generator WIN
     (all reviewers PASS on first contact and score ≥ threshold),
-    Discriminator WIN (any reviewer landed a finding forcing a revision), or
-    Draw (CONDITIONAL PASS). The flaw-landed column names the highest-severity
-    finding landed (or `none` on a Generator WIN).
+    or Discriminator WIN (any reviewer landed a finding forcing a revision).
+    The flaw-landed column names the highest-severity finding landed (or
+    `none` on a Generator WIN).
 
 13. **Attack-library harvesting.** On any reviewer FAIL, once the finding is
     confirmed real (not withdrawn via `CONFLICT.md` adjudication), distill it
@@ -206,7 +206,6 @@ When invoked with "Resume build":
    - If `ESCALATION_REQUESTED.md` exists and is unanswered: surface the question to the user; pause.
    - If `CONFLICT.md` exists and is unresolved: surface to the user; pause.
    - If Evaluator has a round IN PROGRESS: re-invoke the Evaluator.
-   - If Evaluator returned CONDITIONAL PASS and the targeted fix is not yet logged: re-invoke the Generator with the eval report for the targeted fix.
    - If the Architect or Design Critic has a round IN PROGRESS: re-invoke whichever is in progress (they run concurrently; re-launch both in parallel if both are mid-round).
    - If one reviewer completed round N but the other never started (and is not skipped under the skip-unaffected policy): invoke the missing reviewer.
    - If either reviewer issued FAIL for round N but `REVISION COMPLETE — Round N` is absent from progress.md: re-invoke the Generator once, passing the path(s) of every failing report (`architecture_review_round_N.md` and/or `design_critique_round_N.md`) for a single combined revision pass.
@@ -409,11 +408,6 @@ content work between the two calls):
      path `eval_report_round_N.md`. The Generator must read that file before
      beginning its revision. Repeat from Step 4 (launch the reviewer batch,
      applying the skip-unaffected policy).
-   - On CONDITIONAL PASS: it writes `eval_report_round_N.md` with verdict
-     `CONDITIONAL PASS`. Re-invoke the Generator for a single targeted fix
-     pass (not a full revision round). Re-invoke the Evaluator only against
-     the conditional criterion. On success, proceed to PASS. On failure,
-     downgrade to FAIL and continue normally.
    - On PASS: it writes `EVAL_PASS.md` and `RETROSPECTIVE.md`. Pipeline is
      complete.
    - After 5 failed rounds: Evaluator writes `EVAL_UNRECOVERABLE.md` and
@@ -440,7 +434,7 @@ content work between the two calls):
 | `pipeline-state/round.md` | Orchestrator | All reviewer agents |
 | `pipeline-state/index.md` | Orchestrator | All agents (at-a-glance state) |
 | `pipeline-state/progress.md` | Generator (phase transitions + combined revisions, with Modified files lists) | Orchestrator, Architect, Design Critic |
-| `pipeline-state/checkpoint.md` | Evaluator (round state, conditional-pass flag) | Orchestrator |
+| `pipeline-state/checkpoint.md` | Evaluator (round state) | Orchestrator |
 | `pipeline-state/architecture-checkpoint.md` | Architect (round state) | Orchestrator |
 | `pipeline-state/ux-checkpoint.md` | Design Critic (round state) | Orchestrator |
 | `pipeline-state/session.md` | Generator (per-feature progress) | Orchestrator (resume) |
