@@ -351,8 +351,13 @@ content work between the two calls):
 
 ## Orchestration Steps
 
-1. **Invoke the Clarifier sub-agent** with the user's concept.
-   Capture its full output and write it to `clarifier_output.md` in the project root.
+1. **Clarify.**
+   a. Invoke the Clarifier with `mode: questions` and the user's concept. It returns
+      either `NO_QUESTIONS` or a `<clarifier_questions>` block (max 5, numbered).
+   b. If it returned questions, ask them yourself with AskUserQuestion (or in plain
+      text if more than 4) and collect the answers verbatim.
+   c. Invoke the Clarifier again with `mode: report`, the concept, its own questions,
+      and the user's verbatim answers. It writes `clarifier_output.md` itself.
 
 2. **Invoke the Planner sub-agent** with the content of `clarifier_output.md` as its
    input prompt. Capture its full output and write it to `planner_output.md`
@@ -414,7 +419,7 @@ content work between the two calls):
 ## File Conventions
 | File | Written by | Read by |
 |---|---|---|
-| `clarifier_output.md` | Orchestrator (from Clarifier output) | Planner |
+| `clarifier_output.md` | Clarifier (`mode: report`) | Planner |
 | `planner_output.md` | Orchestrator (from Planner output) | Generator, Architect, Design Critic, Evaluator |
 | `output/` | Generator | Architect, Design Critic, Evaluator |
 | `HANDOFF.md` | Generator | Architect, Design Critic, Evaluator |
