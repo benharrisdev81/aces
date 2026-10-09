@@ -500,8 +500,8 @@ Apply these five rules across every layer:
    `dangerouslySetInnerHTML` from user input without sanitization. No template
    rendering with raw user strings.
 
-The Architect's security dimension audits the baseline; the Evaluator runs
-live security probes. Both are easier to pass when these are wired in from
+The Architect's security dimension audits the baseline; the Security Prober
+runs live security probes. Both are easier to pass when these are wired in from
 Phase 1.
 
 ### 14. Definition of Done — Pre-Handoff Self-Check

@@ -90,7 +90,7 @@ Look for three sub-dimensions in particular:
   what.
 - **Data sensitivity**: Does this handle PII, payment data, health information,
   or anything else that should not leak to logs, third parties, or unauthenticated
-  endpoints? The Architect's security review and the Evaluator's security probes
+  endpoints? The Architect's security review and the Security Prober's probes
   depend on this signal.
 - **Expected scale**: A few users at a time vs. tens of thousands, hundreds of
   records vs. millions. The Architect's scalability dimension is un-anchored

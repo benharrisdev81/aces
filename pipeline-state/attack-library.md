@@ -17,7 +17,8 @@ The library is **sharded by dimension** so each reviewer loads only its slice
 rather than the entire file. As the library grows across many builds, loading
 everything would dilute attention and waste context; read only your section:
 
-- **Evaluator** → the **Security** and **Failure Modes / Functional** shards.
+- **Security Prober** → the **Security** shard.
+- **Evaluator** → the **Failure Modes / Functional** shard.
 - **Design Critic** → the **Accessibility / UX** and **Failure Modes / Functional** shards.
 - **Architect** → the **Structural** shard.
 
@@ -62,15 +63,11 @@ Do not reorder or rewrite existing probes — append only.
 - **What it looks for**: <the defect signature>
 - **Severity if confirmed**: <CRITICAL | MODERATE | MINOR>
 - **N/A condition**: <when this probe does not apply, if any>
-- **Refusal-risk**: <none | low | high — optional; Security shard only.
-  Likelihood the probe's own content trips a Fable 5 safety-classifier
-  refusal. `high` probes are run on claude-opus-4-8 via the orchestrator's
-  refusal-handling responsibility, not by a Fable 5 reviewer.>
 ```
 
 ---
 
-## Shard: Security  (Evaluator)
+## Shard: Security  (Security Prober)
 
 ### probe-sql-injection-text-input
 - **Added**: seed
@@ -86,7 +83,6 @@ Do not reorder or rewrite existing probes — append only.
   actually-executed query. The app should accept it as literal text
   (displayed correctly or rejected with validation).
 - **Severity if confirmed**: CRITICAL (Tier 1)
-- **Refusal-risk**: high
 
 ### probe-unauthenticated-protected-endpoint
 - **Added**: seed
@@ -100,7 +96,6 @@ Do not reorder or rewrite existing probes — append only.
 - **What it looks for**: A 200 with real data. 401/403 is correct.
 - **Severity if confirmed**: CRITICAL (Tier 1)
 - **N/A condition**: spec explicitly designates the product as public/unauthenticated.
-- **Refusal-risk**: low
 
 ### probe-idor-identifier-swap
 - **Added**: seed
@@ -114,7 +109,6 @@ Do not reorder or rewrite existing probes — append only.
 - **What it looks for**: Read or modify another user's data.
 - **Severity if confirmed**: CRITICAL (Tier 1)
 - **N/A condition**: no per-entity identifiers anywhere in URLs or API calls.
-- **Refusal-risk**: low
 
 ### probe-default-error-handler-stack-leak
 - **Added**: Round 1 / 2026-06-01 (build: Cipher Diary)
@@ -139,7 +133,6 @@ Do not reorder or rewrite existing probes — append only.
   any sensitive domain data — then Tier 1)
 - **N/A condition**: app has a custom error handler that returns a uniform,
   body-free error shape and never emits a stack to the client.
-- **Refusal-risk**: low
 
 ---
 
