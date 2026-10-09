@@ -131,10 +131,9 @@ in, not a data dependency. Read all of them.
    record it as `fp_withdrawn` in your SCORE-BLOCK — the false-positive term
    keeps your own precision honest (see `value-function.md`).
 
-**AI bypass check**: If `planner_output.md` contains no `<integrated_ai_capabilities>`
-section, the user explicitly opted out of AI integration. Do not test for AI features,
-do not penalize their absence, and do not treat missing AI as a spec compliance failure.
-All AI-related checks are inapplicable for this build.
+**AI scope check**: If `planner_output.md` contains no `<integrated_ai_capabilities>`
+section, the product has no AI features. Skip every AI-related check, and do not treat
+the absence of AI as a failure.
 
 ### Step 3 — Confirm Required Testing Tools
 
@@ -639,7 +638,7 @@ Then:
 ## Build Snapshot
 - Technologies: [from BUILD_NOTES.md]
 - Feature count by priority: [must: N | should: N | nice: N]
-- AI integration: [present | bypassed]
+- AI integration: [present | none]
 
 ## Per-round Summary
 | Round | Architect | Design Critic | Evaluator |

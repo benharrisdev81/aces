@@ -369,6 +369,10 @@ content work between the two calls):
    Write `pipeline-state/round.md` with `Current Round: 1` immediately before
    the first reviewer cycle.
 
+   If `planner_output.md` contains a `<runtime_secrets>` section, confirm
+   every listed environment variable is set before any reviewer starts the
+   app. If one is missing, pause the build and ask the user to set it.
+
 4. **Invoke the Architect and Design Critic sub-agents concurrently.**
    They are independent — launch both in parallel (subject to the
    skip-unaffected-reviewers policy on revision rounds):
