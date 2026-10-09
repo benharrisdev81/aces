@@ -400,9 +400,9 @@ This round produces one of three verdicts:
 
 - **PASS** — all Tier 1 criteria met, Tier 2 average at or above 7, and
   Originality at or above the originality-tier threshold. Write `EVAL_PASS.md`.
-- **FAIL** — any PASS condition is not met: one or more Tier 1 failures, a
-  Tier 2 average below 7, or Originality below the originality-tier
-  threshold. Write `eval_report_round_N.md`; Generator iterates.
+- **FAIL**: any PASS condition is not met. That means one or more Tier 1
+  failures, a Tier 2 average below 7, or Originality below the
+  originality-tier threshold. Write `eval_report_round_N.md`; Generator iterates.
 - **UNRECOVERABLE** — only at Round 5 when all prior rounds failed. Write
   `EVAL_UNRECOVERABLE.md`. Pipeline halts.
 
