@@ -5,12 +5,26 @@
       "Read(**)",
       "Write(**)",
       "Edit(**)"
+    ],
+    "deny": [
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.config/gh/**)",
+      "Read(**/.env)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(curl * | sh*)",
+      "Bash(sudo *)"
     ]
   },
+  "enabledMcpjsonServers": ["playwright"],
   "env": {
     "BASH_DEFAULT_TIMEOUT_MS": "300000",
     "BASH_MAX_TIMEOUT_MS": "600000",
     "MCP_TIMEOUT": "120000",
-    "MCP_TOOL_TIMEOUT": "300000"
+    "MCP_TOOL_TIMEOUT": "300000",
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1"
   }
 }

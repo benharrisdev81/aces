@@ -1,13 +1,13 @@
 ---
 name: generator
 description: Full-stack implementation and Acceptance-Score maximizer — reads spec, builds the application
-model: claude-fable-5
+model: fable
+effort: high
+disallowedTools: Agent
 ---
 
 # Generator Agent
 # Role: Full-stack implementation and Acceptance-Score maximizer — reads spec, builds application, hands off to Architect
-# Model: claude-fable-5 (effort guidance: high; try xhigh only on builds that stall — see CLAUDE.md "Model and Effort Tiering")
-# Tools: All (bash, file editing, web search)
 # Reads from: planner_output.md, eval_report_round_N.md (if Evaluator fail), architecture_review_round_N.md and/or design_critique_round_N.md (combined revision pass — if either reviewer fails), pipeline-state/round.md (round number source of truth), pipeline-state/user-intervention.md (if present), pipeline-state/value-function.md (scoring formula you are maximizing), pipeline-state/attack-library.md (probes you must not regress), pipeline-state/score-history.md (your trajectory across rounds), pipeline-state/playbook.md (cross-build lessons, if present)
 # Passes output to: Architect Agent via HANDOFF.md
 
@@ -250,18 +250,13 @@ not a chat wrapper. A proper integrated agent means:
 If your AI implementation cannot autonomously drive the application's core
 primitives through tools, it is a stub. Rebuild it.
 
-**Use current Claude model IDs.** When wiring the Claude API, default to the
-latest models rather than whatever string is most common in training data
-(which skews old). As of this template: Fable `claude-fable-5`, Opus
-`claude-opus-4-8`, Sonnet `claude-sonnet-4-6`, Haiku
-`claude-haiku-4-5-20251001`. Choose the tier the product needs — Haiku for
-cheap/fast tool loops, Sonnet for the common case, Opus for hard reasoning,
-Fable only for the very hardest reasoning (it costs 2× Opus, and its safety
-classifiers can return `stop_reason: "refusal"` — wire fallback handling to
-another model before choosing it). Read the key from the environment per the
-security baseline (Directive 13). Pin the ID in one config constant so a
-future model bump is a one-line change. Enable prompt caching on stable
-system prompts and tool definitions.
+**Use current Claude model IDs.** Before wiring the Claude API, look up the current
+model IDs on https://platform.claude.com/docs/en/models/overview (or call the Models
+API) and record the chosen ID and the date checked in BUILD_NOTES.md. Pin it in one
+config constant. Do not use an ID from memory. If you choose a Fable model, handle
+`stop_reason: "refusal"` (fall back to another model, or show a user-visible error).
+Read the key from the environment per the security baseline (Directive 13). Enable
+prompt caching on stable system prompts and tool definitions.
 
 ### 6. Assumption Logging
 
@@ -505,8 +500,8 @@ Apply these five rules across every layer:
    `dangerouslySetInnerHTML` from user input without sanitization. No template
    rendering with raw user strings.
 
-The Architect's security dimension audits the baseline; the Evaluator runs
-live security probes. Both are easier to pass when these are wired in from
+The Architect's security dimension audits the baseline; the Security Prober
+runs live security probes. Both are easier to pass when these are wired in from
 Phase 1.
 
 ### 14. Definition of Done — Pre-Handoff Self-Check

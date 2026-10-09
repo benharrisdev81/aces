@@ -1,14 +1,14 @@
 # Autonomous Build Pipeline
 
 ## Pipeline Overview
-Six sub-agents: Clarifier → Planner → Generator → (Architect ∥ Design Critic) → Evaluator.
+Seven sub-agents: Clarifier → Planner → Generator → (Architect ∥ Design Critic) → Security Prober → Evaluator.
 After each Generator build (or revision), the Architect (structural quality) and the Design
 Critic (usability) review **concurrently** — they are independent: the Architect reads only
 the code, the Design Critic uses only the live app. If either lands findings, the Generator
-makes a **single combined revision pass** addressing both reports, then the Evaluator runs
-functional tests. The Evaluator can trigger Generator re-runs up to 5 rounds — a Fable 5
-build that fails 5 consecutive rounds almost certainly has a spec problem (escalation
-territory), not a generation problem.
+makes a **single combined revision pass** addressing both reports. Then the Security Prober
+runs the security probes, and after it the Evaluator runs functional tests. The Evaluator
+can trigger Generator re-runs up to 5 rounds. A Fable build that fails 5 consecutive rounds
+almost certainly has a spec problem (escalation territory), not a generation problem.
 
 The pipeline is structured as an **adversarial minimax game**: the Generator
 maximizes a shared scalar (the Acceptance Score, defined in
@@ -29,32 +29,30 @@ stranded in its clone.
 
 ## Long Turns Are Normal
 
-Fable 5 turns on hard tasks run for many minutes at `high` effort, and a
+Fable turns on hard tasks run for many minutes at `high` effort, and a
 full build can extend for hours. Do not treat a long-running sub-agent turn
 as hung — `.claude/settings.json` raises bash and MCP tool timeouts, and the
 per-feature `session.md` checkpoint plus the Resume Protocol make
 interruption cheap. Check on a running build asynchronously (status checks
 between agent invocations) rather than blocking on it; never inject
-remaining-token or budget countdowns into a sub-agent's prompt — Fable 5 may
+remaining-token or budget countdowns into a sub-agent's prompt — Fable may
 wrap up prematurely when shown one (cost accounting stays orchestrator-side
 in `cost.md`).
 
 ## Model and Effort Tiering
 
-Each sub-agent is pinned to a model in its agent-file frontmatter (`model:`).
-Effort is a harness-level setting, not a per-agent frontmatter key — the
-values below are operating guidance per Anthropic's Fable 5 recommendation
-(default `high`; lower levels often exceed prior-model `xhigh`, so do not
-reach for `xhigh` reflexively).
+Each sub-agent pins `model:` and `effort:` in its frontmatter; the table below
+mirrors those values.
 
-| Agent | Model | Effort guidance |
-|---|---|---|
-| Clarifier | `claude-sonnet-4-6` | medium — no tools, single structured output |
-| Planner | `claude-fable-5` | high — spec quality cascades downstream |
-| Generator | `claude-fable-5` | high; try `xhigh` only on builds that stall |
-| Architect | `claude-fable-5` | high |
-| Design Critic | `claude-fable-5` | high |
-| Evaluator | `claude-fable-5` (security probes fall back to `claude-opus-4-8` — see Responsibility #15) | high |
+| Agent | `model` | `effort` | Tools (frontmatter) |
+|---|---|---|---|
+| Clarifier | `opus` | `high` | `tools: Write` |
+| Planner | `fable` | `high` | `tools: Write` |
+| Generator | `fable` | `high` | `disallowedTools: Agent` |
+| Architect | `opus` (trial, see O2) | `high` | `tools: Read, Grep, Glob, Bash, Write` |
+| Design Critic | `fable` | `high` | `tools: Read, Bash, Write, mcp__playwright` |
+| Security Prober | `opus` | `high` | `tools: Read, Bash, Write, mcp__playwright` |
+| Evaluator | `fable` | `high` | `tools: Read, Grep, Glob, Bash, Write, mcp__playwright` |
 
 ## How to Run the Pipeline
 - **Start a new build:** "Build [product concept]"
@@ -103,11 +101,8 @@ single sub-agent can:
 
 8. **Cost tracking.** Append a per-round entry to `pipeline-state/cost.md`
    recording approximate tokens consumed. If the cost threshold is reached
-   (default: **US$100 per build**, user-configurable; Fable 5 is $10/$50 per
-   MTok — 2× Opus 4.8), halt and ask the user to confirm continuation.
-   Also record any refusal/fallback events (agent, `stop_details.category`,
-   retry model) — requests refused before any output are unbilled, and
-   fallback credit refunds the prompt-cache cost of the model switch.
+   (default: **US$100 per build**, user-configurable), halt and ask the user to
+   confirm continuation.
 
 9. **Pipeline index.** Maintain `pipeline-state/index.md` — a 30-line at-a-glance
    summary of pipeline state (current round, last phase, current reviewer
@@ -125,6 +120,10 @@ single sub-agent can:
     under the table in `pipeline-state/score-history.md` and put the headline
     Acceptance Score into `pipeline-state/index.md`. Do not compute the
     scalar yourself — the script is the deterministic source of truth.
+    **Interim, until the gate rewrite:** the Evaluator runs no security
+    probes. Before running the script, set the payload's
+    `evaluator.security_fail` to the Security Prober's `security_fail`, and
+    add the Prober's `not_tested` to `evaluator.not_tested`.
 
 12. **Scoreboard.** After each Evaluator verdict, append one row to
     `pipeline-state/scoreboard.md` classifying the round as Generator WIN
@@ -148,24 +147,9 @@ single sub-agent can:
     keeps the adversarial framing from rewarding spurious findings — a
     reviewer that over-reports loses score just as the Generator does.
 
-15. **Refusal handling (Fable 5 safety classifiers).** `claude-fable-5` can
-    decline a request with `stop_reason: "refusal"` (an HTTP 200, not an
-    error) — benign security QA is the most likely trigger in this pipeline.
-    If any sub-agent invocation ends in a refusal, log the
-    `stop_details.category` (`cyber`, `bio`, `reasoning_extraction`, or
-    null) to `pipeline-state/progress.md` and re-run that invocation on
-    `claude-opus-4-8`. A refusal does not consume a round. Where the harness
-    supports it, prefer the beta `fallbacks` parameter or the SDK
-    refusal-fallback middleware over a manual retry (fallback credit refunds
-    the prompt-cache cost of switching). The Evaluator's security probes are
-    the most refusal-prone surface: attack-library probes marked
-    `Refusal-risk: high` are run on `claude-opus-4-8` preemptively, and an
-    Evaluator that records `SECURITY PROBES REFUSED` in
-    `pipeline-state/checkpoint.md` gets its security-probe section re-run on
-    `claude-opus-4-8` before the round's verdict stands. Note: Fable 5 also
-    requires 30-day data retention and is unavailable under zero-data-retention
-    arrangements (such requests 400 with `invalid_request_error`) — the
-    `claude-opus-4-8` fallback path covers that failure mode too.
+15. **Missing reports.** If a subagent returns no report file, re-invoke it
+    once with `model: opus`; if that also fails, write
+    `ESCALATION_REQUESTED.md`. A re-invocation does not consume a round.
 
 16. **Playbook harvesting (Generator memory).** After `RETROSPECTIVE.md` is
     written (PASS or UNRECOVERABLE), distill the build's transferable
@@ -199,16 +183,19 @@ When invoked with "Resume build":
 4. Read `pipeline-state/checkpoint.md` to find the last Evaluator round state.
 5. Read `pipeline-state/architecture-checkpoint.md` to find the last Architect round state.
 6. Read `pipeline-state/ux-checkpoint.md` to find the last Design Critic round state.
+6b. Read `pipeline-state/security-checkpoint.md` to find the last Security Prober round state.
 7. Read `pipeline-state/session.md` to find the last completed feature within the current Generator phase.
 8. Read `pipeline-state/user-intervention.md` (if it exists) for any pending user input.
 9. Determine re-entry point (check in this order):
    - If `ESCALATION_REQUESTED.md` exists and is unanswered: surface the question to the user; pause.
    - If `CONFLICT.md` exists and is unresolved: surface to the user; pause.
    - If Evaluator has a round IN PROGRESS: re-invoke the Evaluator.
+   - If the Security Prober has a round IN PROGRESS: re-invoke the Security Prober.
    - If the Architect or Design Critic has a round IN PROGRESS: re-invoke whichever is in progress (they run concurrently; re-launch both in parallel if both are mid-round).
    - If one reviewer completed round N but the other never started (and is not skipped under the skip-unaffected policy): invoke the missing reviewer.
    - If either reviewer issued FAIL for round N but `REVISION COMPLETE — Round N` is absent from progress.md: re-invoke the Generator once, passing the path(s) of every failing report (`architecture_review_round_N.md` and/or `design_critique_round_N.md`) for a single combined revision pass.
-   - If both reviewers completed round N (PASS, or FAIL with the combined revision logged) but the Evaluator has not yet run for that round: re-invoke the Evaluator.
+   - If both reviewers completed round N (PASS, or FAIL with the combined revision logged) but `security_probe_round_N.md` does not exist: invoke the Security Prober.
+   - If `security_probe_round_N.md` exists but the Evaluator has not yet run for that round: re-invoke the Evaluator.
    - If Generator is mid-phase (session.md shows incomplete phase): re-invoke the Generator, instructing it to read `pipeline-state/session.md` and continue from the last completed feature.
    - If a phase boundary was the last log entry in progress.md (HANDOFF COMPLETE not present): re-invoke the Generator at the next phase.
    - If only Planner has completed (planner_output.md is populated, progress.md is empty): re-invoke the Generator from Phase 1.
@@ -244,6 +231,9 @@ in this round's parallel batch:
   Design Critic. Run Architect and Evaluator.
 - **The revision touched multiple layers** — run both reviewers
   (concurrently) and then the Evaluator.
+
+The Security Prober is never skipped. It runs every round, before the
+Evaluator.
 
 Each reviewer agent also chooses delta vs. full mode internally based on the
 prior revision's `Modified files:` list. The orchestrator's skip policy is the
@@ -351,12 +341,21 @@ content work between the two calls):
 
 ## Orchestration Steps
 
-1. **Invoke the Clarifier sub-agent** with the user's concept.
-   Capture its full output and write it to `clarifier_output.md` in the project root.
+1. **Clarify.**
+   a. Invoke the Clarifier with `mode: questions` and the user's concept. It returns
+      either `NO_QUESTIONS` or a `<clarifier_questions>` block (max 5, numbered).
+   b. If it returned questions, ask them yourself with AskUserQuestion (or in plain
+      text if more than 4) and collect the answers verbatim.
+   c. Invoke the Clarifier again with `mode: report`, the concept, its own questions,
+      and the user's verbatim answers. It writes `clarifier_output.md` itself.
+   d. Confirm `clarifier_output.md` exists and line 1 is `<clarification_report>`.
 
 2. **Invoke the Planner sub-agent** with the content of `clarifier_output.md` as its
-   input prompt. Capture its full output and write it to `planner_output.md`
-   in the project root. This is the only copy of the spec.
+   input prompt. It writes `planner_output.md` itself; this is the only copy of
+   the spec. Confirm the file exists and line 1 is `format-version: planner-v1`.
+
+   If either check in steps 1d or 2 fails, re-invoke that agent once and state the
+   problem. If it fails again, write `ESCALATION_REQUESTED.md`.
 
 3. **Invoke the Generator sub-agent.**
    It reads `planner_output.md`, builds the app into `output/`, and writes
@@ -396,11 +395,19 @@ content work between the two calls):
      Then proceed to Step 5.
    - **If both PASS:** Proceed directly to Step 5.
 
-5. **Invoke the Evaluator sub-agent.**
-   It reads `planner_output.md`, `HANDOFF.md`, `VERIFY_NOTES.md`,
-   `architecture_review_round_N.md`, and `design_critique_round_N.md`, starts
-   the app, and tests it for functional correctness, spec compliance, and
-   security baseline.
+5. **Invoke the Security Prober, then the Evaluator.** Run them one after
+   the other, never in parallel.
+
+   a. The **Security Prober** reads `planner_output.md` and `HANDOFF.md`,
+      starts the app, runs the built-in security probes and the attack
+      library's Security shard, stops the app, and writes
+      `security_probe_round_N.md`.
+   b. The **Evaluator** reads `planner_output.md`, `HANDOFF.md`,
+      `VERIFY_NOTES.md`, `architecture_review_round_N.md`,
+      `design_critique_round_N.md`, and `security_probe_round_N.md`, starts
+      the app, and tests it for functional correctness and spec compliance.
+      It runs no security probes; it grades the Security Prober's results as
+      its security baseline.
    - On FAIL: it writes `eval_report_round_N.md`. Increment N in
      `pipeline-state/round.md`. Re-invoke the Generator, passing the explicit
      path `eval_report_round_N.md`. The Generator must read that file before
@@ -414,14 +421,15 @@ content work between the two calls):
 ## File Conventions
 | File | Written by | Read by |
 |---|---|---|
-| `clarifier_output.md` | Orchestrator (from Clarifier output) | Planner |
-| `planner_output.md` | Orchestrator (from Planner output) | Generator, Architect, Design Critic, Evaluator |
-| `output/` | Generator | Architect, Design Critic, Evaluator |
-| `HANDOFF.md` | Generator | Architect, Design Critic, Evaluator |
+| `clarifier_output.md` | Clarifier (`mode: report`) | Planner |
+| `planner_output.md` | Planner | Generator, Architect, Design Critic, Security Prober, Evaluator |
+| `output/` | Generator | Architect, Design Critic, Security Prober, Evaluator |
+| `HANDOFF.md` | Generator | Architect, Design Critic, Security Prober, Evaluator |
 | `BUILD_NOTES.md` | Generator | Architect, Evaluator |
 | `VERIFY_NOTES.md` | Generator | Evaluator |
 | `architecture_review_round_N.md` | Architect | Generator (combined revision), Evaluator |
 | `design_critique_round_N.md` | Design Critic | Generator (combined revision), Evaluator |
+| `security_probe_round_N.md` | Security Prober | Evaluator |
 | `eval_report_round_N.md` | Evaluator | Generator (next round) |
 | `EVAL_PASS.md` | Evaluator | Orchestrator |
 | `EVAL_UNRECOVERABLE.md` | Evaluator | Orchestrator |
@@ -434,6 +442,7 @@ content work between the two calls):
 | `pipeline-state/checkpoint.md` | Evaluator (round state) | Orchestrator |
 | `pipeline-state/architecture-checkpoint.md` | Architect (round state) | Orchestrator |
 | `pipeline-state/ux-checkpoint.md` | Design Critic (round state) | Orchestrator |
+| `pipeline-state/security-checkpoint.md` | Security Prober (round state) | Orchestrator |
 | `pipeline-state/session.md` | Generator (per-feature progress) | Orchestrator (resume) |
 | `pipeline-state/user-intervention.md` | Orchestrator (from "Pause build" or escalation answers) | Generator |
 | `pipeline-state/cost.md` | Orchestrator (per-round token usage) | Orchestrator |
@@ -459,6 +468,7 @@ check it and surface a clear error on mismatch rather than parsing garbage.
 | `VERIFY_NOTES.md` | `verify-notes-v1` |
 | `architecture_review_round_N.md` | `architecture-review-v1` |
 | `design_critique_round_N.md` | `design-critique-v1` |
+| `security_probe_round_N.md` | `security-probe-v1` |
 | `eval_report_round_N.md` | `eval-report-v1` |
 | `EVAL_PASS.md` | `eval-pass-v1` |
 | `EVAL_UNRECOVERABLE.md` | `eval-unrecoverable-v1` |
@@ -477,4 +487,5 @@ check it and surface a clear error on mismatch rather than parsing garbage.
 - `.claude/agents/generator.md`
 - `.claude/agents/architect.md`
 - `.claude/agents/design-critic.md`
+- `.claude/agents/security-prober.md`
 - `.claude/agents/evaluator.md`
