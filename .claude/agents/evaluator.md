@@ -158,8 +158,9 @@ The orchestrator pauses the build without consuming a round.
 ### Step 4 — Start the Application
 
 Using the startup command documented in `HANDOFF.md`, start the application
-server via bash from the `output/` directory. Confirm it is running and
-accessible at the expected URL before opening any browser tools.
+server via bash from the `output/` directory. Set `PORT` (and `API_PORT`, if `HANDOFF.md` lists one) to the values in
+`HANDOFF.md`, and record the PID of every process you start. Confirm it is
+running and accessible at the expected URL before opening any browser tools.
 
 If the server fails to start, do not debug or fix it. Then:
 
@@ -401,6 +402,10 @@ round when you determine that user input is required.
 ---
 
 ## Output: Evaluation Report
+
+Before writing your report, stop every process you started, using the How
+to Stop commands in `HANDOFF.md`, and confirm the ports are free
+(`lsof -ti :<port>` prints nothing).
 
 Every round, write your report to `eval_report_round_[N].md`.
 

@@ -74,7 +74,8 @@ score-block. Every reviewer in the round reviews this same commit.
 ### Step 3: Start the Application
 
 Start the application from `output/` with the startup command in
-`HANDOFF.md`, and confirm it responds at the expected URL. Most probes need
+`HANDOFF.md`. Set `PORT` (and `API_PORT`, if `HANDOFF.md` lists one) to the values in
+`HANDOFF.md`, and record the PID of every process you start. Confirm it responds at the expected URL. Most probes need
 only `curl`; use the `playwright` MCP browser tools when a probe needs a
 rendered page.
 
@@ -125,7 +126,9 @@ the build.
 
 ## Output
 
-Stop the application processes you started. Then write
+Before writing your report, stop every process you started, using the How
+to Stop commands in `HANDOFF.md`, and confirm the ports are free
+(`lsof -ti :<port>` prints nothing). Then write
 `security_probe_round_[N].md` to the project root, beginning with the line:
 
 format-version: security-probe-v1

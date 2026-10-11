@@ -357,7 +357,9 @@ content work between the two calls):
       starts the app.
    b. The **live-app chain**, one agent after another, never in parallel.
       Each agent starts the app, tests it, and stops it before writing its
-      report.
+      report. Before launching each agent, free the app's ports: run the
+      How to Stop commands in `HANDOFF.md`, then
+      `lsof -ti :<port> | xargs kill` for each port it lists.
       1. The **Design Critic** reviews usability and accessibility across
          ten dimensions plus the i18n probe, at three viewport sizes, and
          writes `design_critique_round_N.md`.

@@ -182,8 +182,9 @@ not exist).
   it — judge from observed behavior, never from memory of what you
   intended. Manually exercise every feature listed in the spec — including
   a clean browser console and network tab check (no uncaught errors, no
-  unexpected 4xx/5xx). Write `VERIFY_NOTES.md` (see Directive 15). Only
-  after this is complete may you write the handoff.
+  unexpected 4xx/5xx). Write `VERIFY_NOTES.md` (see Directive 15). Stop
+  the app with your How to Stop commands (Directive 16) and confirm its
+  ports are free. Only after this is complete may you write the handoff.
 
 ### 4. Periodic Spec Re-Anchoring
 
@@ -526,7 +527,8 @@ this list before writing HANDOFF.md.
       <integrated_ai_capabilities> section. Do not add AI features the
       spec does not ask for.)
 
-  [ ] The application starts without errors from the `output/` directory.
+  [ ] The application starts without errors from the `output/` directory,
+      on the port in `PORT`, and How to Stop leaves its ports free.
 
   [ ] The frontend and backend are fully connected. No hardcoded mock data.
       No disconnected UI panels. Every data-displaying component reads from
@@ -604,6 +606,12 @@ Then:
 
   ## How to Run
   The exact commands to install dependencies and start the application.
+  The app must read its port from the `PORT` environment variable (and a
+  separate backend from `API_PORT`). List the default for each.
+
+  ## How to Stop
+  The exact commands that stop every process the app starts, for example
+  `lsof -ti :$PORT | xargs kill`.
 
   ## Feature Checklist
   Every feature in the spec's Core Feature Deliverables listed with:
