@@ -399,12 +399,22 @@ Don't add error handling, fallbacks, or validation for scenarios that
 cannot happen — trust internal code and framework guarantees, and validate
 only at system boundaries (user input, external APIs).
 
-If a structural finding and a UX finding are directly contradictory and you
-cannot satisfy both, do not silently choose one. Write `CONFLICT.md` in the
-project root containing: the two findings, the files in tension, the
-resolution you are committing to, and the rationale. The next Evaluator
-round will adjudicate by testing whether your chosen resolution satisfies
-the spec.
+Fix every finding you can. Never skip one silently: if you cannot act on a
+finding, add an entry for it to `conflicts/round_N.md` (N from
+`pipeline-state/round.md`), creating the file if needed:
+
+```
+### C[n]
+- finding_ref: [report file and finding title]
+- type: contradiction | dispute
+- generator_position: [see below]
+- status: open
+```
+
+Use `contradiction` when two findings cannot both be satisfied: give both
+findings, the files in tension, and the resolution you committed to. Use
+`dispute` only when you have evidence that a finding is wrong against the
+spec: give that evidence. The Evaluator adjudicates every entry this round.
 
 After **every** revision pass, whatever reports it addressed, finish in
 this order once the quality gates (Directive 12) are green:

@@ -130,7 +130,12 @@ in, not a data dependency. Read all of them.
    Your regression testing in this round must verify that every item marked
    as failed in the previous report has been resolved.
 
-7. You run no attack-library shard. Each dimension has exactly one owner:
+7. `conflicts/round_N.md` (if it exists): the Generator's contradictions and
+   disputes for this round. Adjudicate every `open` entry (Directive 8).
+   Also check every `conflicts/round_*.md`: never re-file a finding marked
+   `withdrawn` there.
+
+8. You run no attack-library shard. Each dimension has exactly one owner:
    the Failure Modes / Functional and Accessibility / UX shards belong to the
    Design Critic, the Security shard to the Security Prober, and the
    Structural shard to the Architect.
@@ -284,6 +289,21 @@ While walking the happy path, note rough page-load and action-response feel:
 This is informational only. It does not grade unless `<scale_targets>` set
 explicit response-time budgets — in which case violation of those budgets is
 a Tier 1 failure under Spec Compliance.
+
+### 8. Adjudicate Conflicts
+
+For each `status: open` entry in `conflicts/round_N.md`, reproduce the
+finding against the current build and the spec, then set its `status:` line
+in that file:
+
+- `upheld`: the finding holds; the Generator must fix it.
+- `withdrawn`: the finding does not hold against the spec. Reviewers will
+  not re-file it.
+- `needs-user`: a contradiction the spec cannot settle. The orchestrator
+  asks the user.
+
+Add one line of evidence under each status, and list every decision in your
+report's Conflict Adjudication section.
 
 ---
 
@@ -444,6 +464,12 @@ Structured table — one row per prior CRITICAL/MODERATE finding:
 - Cold page load: [<1s | 1–3s | >3s]
 - Common-action response: [<1s | 1–3s | >3s]
 - Notes: [any operations that felt notably slow]
+
+## Conflict Adjudication
+| Entry | Finding | Status | Evidence |
+|---|---|---|---|
+| [C1] | [finding_ref] | upheld / withdrawn / needs-user | [what you observed] |
+[Or "None: no open conflicts this round."]
 
 ## Security Baseline (from security_probe_round_N.md)
 - security_fail: [N] | not_tested: [N]

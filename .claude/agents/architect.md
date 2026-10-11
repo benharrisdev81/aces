@@ -122,7 +122,10 @@ data dependency:
    review target — you do not need to re-scan the full codebase
    to find them.
 
-6. `pipeline-state/attack-library.md` — the cross-build adversarial probe
+6. `conflicts/round_*.md` (if any): never re-file a finding the Evaluator
+   marked `withdrawn` there. File `open` and `upheld` findings as usual.
+
+7. `pipeline-state/attack-library.md` — the cross-build adversarial probe
    library. Confirm `format-version: attack-library-v2`. It is sharded; load
    only the **Structural** shard. Run every `active` probe there against the
    codebase (probes are structural, not live-app; reviewer scope still

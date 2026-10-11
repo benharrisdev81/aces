@@ -106,7 +106,10 @@ data dependency:
    were last revised and which were left alone. (You do not read the
    Architect's review — it runs concurrently with you.)
 
-5. `pipeline-state/attack-library.md` — the cross-build adversarial probe
+5. `conflicts/round_*.md` (if any): never re-file a finding the Evaluator
+   marked `withdrawn` there. File `open` and `upheld` findings as usual.
+
+6. `pipeline-state/attack-library.md` — the cross-build adversarial probe
    library. Confirm `format-version: attack-library-v2`. It is sharded; load
    only the **Accessibility / UX** and **Failure Modes / Functional** shards.
    Run every `active` probe in those shards in the live app. Skip `N/A`,

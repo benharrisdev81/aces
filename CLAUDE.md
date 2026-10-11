@@ -88,9 +88,11 @@ single sub-agent can:
    verify the `format-version:` header on the first line. On mismatch, halt
    with a clear error — do not let an agent parse a future format.
 
-5. **Conflict resolution.** If a Generator revision pass writes `CONFLICT.md`,
-   surface it to the user in the next status check. Do not silently merge
-   contradictory reviewer findings.
+5. **Conflict resolution.** The Generator records findings it cannot act on
+   in `conflicts/round_N.md`, and the Evaluator adjudicates them in the same
+   round. Do not pause for an `open`, `upheld`, or `withdrawn` entry. Pause
+   and ask the user only about an entry marked `needs-user`, and record the
+   answer as a spec amendment (#7).
 
 6. **Escalation handling.** If any agent writes `ESCALATION_REQUESTED.md`, pause
    the build, surface the question to the user, record their answer as a
@@ -203,7 +205,7 @@ When invoked with "Resume build":
 8. Read the `<spec_amendment>` blocks at the end of `planner_output.md`, if any.
 9. Determine re-entry point (check in this order):
    - If `ESCALATION_REQUESTED.md` exists and is unanswered: surface the question to the user; pause.
-   - If `CONFLICT.md` exists and is unresolved: surface to the user; pause.
+   - If a `conflicts/round_*.md` entry is marked `needs-user` and no spec amendment answers it: surface it to the user; pause.
    - If round.md shows Round N > 1 and progress.md has no `REVISION COMPLETE` record for Round N: re-invoke the Generator for the combined revision, passing every Round N-1 report with open findings.
    - The remaining reviewer branches apply only once the round's Generator pass is complete (`HANDOFF COMPLETE` for Round 1, the `REVISION COMPLETE` record for Round N > 1):
      - If any reviewer has round N IN PROGRESS in its checkpoint file: re-invoke it. If it belongs to the live-app chain, continue the chain after it.
@@ -304,10 +306,12 @@ content work between the two calls):
 
 ## Conflict and Escalation Handling
 
-- **CONFLICT.md** — Generator writes this when two reviewer findings are
-  directly contradictory and it cannot satisfy both. The orchestrator
-  surfaces the conflict to the user and lets the Evaluator's next round
-  adjudicate against the spec.
+- **`conflicts/round_N.md`**: the Generator adds one entry per finding it
+  cannot act on, as a `contradiction` (two findings that cannot both be
+  satisfied) or a `dispute` (evidence that a finding is wrong against the
+  spec). The Evaluator adjudicates each entry in the same round as `upheld`,
+  `withdrawn`, or `needs-user`. Reviewers never re-file a `withdrawn`
+  finding. The orchestrator pauses only for `needs-user`.
 - **ESCALATION_REQUESTED.md** — Any agent writes this to request user input.
   The orchestrator pauses, surfaces the question, records the answer as a
   spec amendment (#7), and resumes. This does not consume a round.
@@ -409,7 +413,7 @@ content work between the two calls):
 | `EVAL_UNRECOVERABLE.md` | Orchestrator (from `gate.py` output) | Evaluator (`mode: retrospective`), user |
 | `RETROSPECTIVE.md` | Evaluator (`mode: retrospective`) | Orchestrator (surfaces to user) |
 | `ESCALATION_REQUESTED.md` | Any agent | Orchestrator → User |
-| `CONFLICT.md` | Generator | Orchestrator → Evaluator (next round) |
+| `conflicts/round_N.md` | Generator (entries), Evaluator (status) | Evaluator, all reviewers, Orchestrator |
 | `pipeline-state/round.md` | Orchestrator | All reviewer agents |
 | `pipeline-state/index.md` | Orchestrator | All agents (at-a-glance state) |
 | `pipeline-state/progress.md` | Generator (phase transitions + one `REVISION COMPLETE` record per revision pass) | Orchestrator, Architect, Design Critic |

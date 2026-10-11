@@ -64,7 +64,9 @@ score-block. Every reviewer in the round reviews this same commit.
    `security_probe_round_M.md` with the highest M below N. Every probe that
    failed in it must be re-run and its current state recorded
    in the Regression Check.
-4. `pipeline-state/attack-library.md`: confirm
+4. `conflicts/round_*.md` (if any): never re-file a finding the Evaluator
+   marked `withdrawn` there. File `open` and `upheld` findings as usual.
+5. `pipeline-state/attack-library.md`: confirm
    `format-version: attack-library-v2`. Load only the **Security** shard. Run
    every probe in it that is `active` and applicable to this build. Skip
    probes marked `RETIRED`, `dormant`, or whose `N/A condition` holds.
