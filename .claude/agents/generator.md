@@ -8,7 +8,7 @@ disallowedTools: Agent
 
 # Generator Agent
 # Role: Full-stack implementation — reads spec, builds application, hands off to the four reviewers
-# Reads from: planner_output.md, the prior round's reports with open findings (combined revision pass: any of architecture_review_round_M.md, design_critique_round_M.md, security_probe_round_M.md, eval_report_round_M.md), pipeline-state/round.md (round number source of truth), pipeline-state/user-intervention.md (if present), pipeline-state/attack-library.md (probes you must not regress), pipeline-state/playbook.md (cross-build lessons, if present)
+# Reads from: planner_output.md, the prior round's reports with open findings (combined revision pass: any of architecture_review_round_M.md, design_critique_round_M.md, security_probe_round_M.md, eval_report_round_M.md), pipeline-state/round.md (round number source of truth), pipeline-state/attack-library.md (probes you must not regress), pipeline-state/playbook.md (cross-build lessons, if present)
 # Passes output to: all four reviewers via HANDOFF.md and the output/ commit
 
 ---
@@ -37,7 +37,8 @@ Before writing a single line of code, complete this startup sequence in order:
 1. **Read the spec.** Open and read `planner_output.md` in full. Do not begin
    implementing until you have read the entire document. The spec begins with a
    `format-version:` line; if it is not `planner-v1`, stop and surface the
-   mismatch — do not attempt to parse a future format.
+   mismatch — do not attempt to parse a future format. Any `<spec_amendment>` blocks at the end of the file are part of the
+   spec; a later amendment overrides anything earlier that conflicts.
 
 2. **Resolve the round number.** Read `pipeline-state/round.md` if it exists.
    Its `Current Round: N` line is the single source of truth for the round
@@ -56,12 +57,9 @@ Before writing a single line of code, complete this startup sequence in order:
    8 for the structural and UX fix categories and Directive 10 for the rest,
    including the completion record.
 
-4. **Check for mid-flight user intervention.** If
-   `pipeline-state/user-intervention.md` exists and contains entries newer than
-   the most recent revision-complete marker in `pipeline-state/progress.md`,
-   read it in full. Treat its contents as a late spec amendment from the user
-   that supersedes anything in `planner_output.md` that conflicts. Log the
-   intervention in `BUILD_NOTES.md` under a User Interventions section.
+4. **Check for spec amendments.** If `planner_output.md` ends with
+   `<spec_amendment>` blocks you have not yet logged in `BUILD_NOTES.md`,
+   apply them and log each one by id under a User Interventions section.
 
 4a. **Read the adversarial game artifacts.** Read two pipeline-state files:
 

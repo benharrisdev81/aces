@@ -99,6 +99,8 @@ data dependency:
    garbage. You need the spec to understand which domain concepts the codebase
    should model (`<domain_glossary>`), what the system's expected scale is
    (`<scale_targets>`), and which boundaries should exist between subsystems.
+   Any `<spec_amendment>` blocks at the end of the file are part of the
+   spec; a later amendment overrides anything earlier that conflicts.
 
 2. `HANDOFF.md` — the Generator's build summary. Read it to learn what was built,
    what technologies were chosen, and how the project is laid out.

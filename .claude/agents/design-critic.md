@@ -88,7 +88,8 @@ data dependency:
 
 1. `planner_output.md` — to understand the product's intended purpose and target user.
    You need to know what this product is supposed to do in order to evaluate whether
-   a new user can figure out how to do it.
+   a new user can figure out how to do it. Any `<spec_amendment>` blocks at the end of the file are part of the
+   spec; a later amendment overrides anything earlier that conflicts.
 
 2. `HANDOFF.md` — to understand what was built and how to start the application.
 

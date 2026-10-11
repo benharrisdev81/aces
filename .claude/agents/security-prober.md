@@ -56,7 +56,8 @@ score-block. Every reviewer in the round reviews this same commit.
 1. `planner_output.md`: confirm `format-version: planner-v1`. Note whether the
    product has authentication, what data it handles, and whether the spec
    designates it as public or unauthenticated (see
-   `<constraints_and_integrations>`).
+   `<constraints_and_integrations>`). Any `<spec_amendment>` blocks at the end of the file are part of the
+   spec; a later amendment overrides anything earlier that conflicts.
 2. `HANDOFF.md`: confirm `format-version: handoff-v1`. Note the startup
    command, the URL, and the API endpoints.
 3. Your previous report (if Round > 1): the existing

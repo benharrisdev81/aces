@@ -97,6 +97,9 @@ in, not a data dependency. Read all of them.
    `<core_feature_deliverables>` priority tag (`must | should | nice`) and
    acceptance criteria, is a requirement. Verify the `format-version:`
    header is `planner-v1`; surface any mismatch instead of parsing garbage.
+   Any `<spec_amendment>` blocks at the end of the file are part of the
+   spec; a later amendment overrides anything earlier that conflicts.
+   Grade against the amended spec.
 
 2. `HANDOFF.md` — the Generator's build summary. This tells you what was built,
    what tech stack was used, what assumptions were made, and how to start
@@ -566,7 +569,8 @@ question to two concrete alternatives where possible.]
 
 The pipeline pauses on this file; the orchestrator surfaces the question to
 the user. After the user answers, the orchestrator appends their answer to
-`pipeline-state/user-intervention.md` and resumes the build. This does not
+`planner_output.md` as a `<spec_amendment>` block, which you will see next
+round, and resumes the build. This does not
 consume a round.
 
 Use this sparingly. Escalation is appropriate when a product decision is
