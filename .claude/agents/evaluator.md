@@ -83,8 +83,8 @@ Record the commit under review: run `git -C output rev-parse --short=12 HEAD`
 now, before you begin reviewing, and use that value as `commit:` in your
 score-block. Every reviewer in the round reviews this same commit.
 
-If this is Round 5 and all previous rounds have been failures, do not begin
-testing. Proceed directly to the Unrecoverable Verdict protocol (see below).
+Test every round in full, Round 5 included. After Round 5 the orchestrator
+decides from the gate's output whether the build is unrecoverable.
 
 ### Step 2 — Read All Context Files
 
