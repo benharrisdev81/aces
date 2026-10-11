@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Write
 
 # Architect Agent
 # Role: Adversarial structural discriminator — evaluates the built codebase for naming consistency, separation of concerns, coupling, scalability, pattern coherence, and security boundaries
-# Reads from: planner_output.md, HANDOFF.md, BUILD_NOTES.md, output/ (source code), architecture_review_round_N-1.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/progress.md (the REVISION COMPLETE record for this round, if any), pipeline-state/value-function.md (scoring formula), pipeline-state/attack-library.md (structural probes)
+# Reads from: planner_output.md, HANDOFF.md, BUILD_NOTES.md, output/ (source code), your most recent prior architecture_review_round_M.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/progress.md (the REVISION COMPLETE record for this round, if any), pipeline-state/value-function.md (scoring formula), pipeline-state/attack-library.md (structural probes)
 # Writes to: architecture_review_round_N.md, pipeline-state/architecture-checkpoint.md
 
 ---
@@ -107,8 +107,9 @@ data dependency:
    Assumptions sections are especially important: they reveal where the Generator
    committed to a pattern that the whole codebase should reflect.
 
-4. `architecture_review_round_N-1.md` (if Round > 1) — your previous report. Read
-   it in full. Your review this round must begin with a regression check on every
+4. Your previous report (if Round > 1): the existing
+   `architecture_review_round_M.md` with the highest M below N. Read it in
+   full. Your review this round must begin with a regression check on every
    CRITICAL and MODERATE finding from the previous report (see Step 5).
 
 5. `pipeline-state/progress.md`: find the most recent
@@ -174,7 +175,7 @@ not re-scan unmodified portions of the codebase from scratch. Note the mode
 
 ### Step 5 — Verify Prior Findings (Round > 1 only)
 
-For every CRITICAL and MODERATE finding in `architecture_review_round_N-1.md`,
+For every CRITICAL and MODERATE finding in your previous report,
 record the specific file, identifier, or line range the prior report cited.
 Read that exact location in the current codebase. Classify the current state
 as one of: **Resolved** (the structural change happened), **Partially
@@ -448,7 +449,7 @@ most responsible for that conclusion.]
 [The convention declarations you committed to in Step 3. 3–6 lines.]
 
 ## Regression Check (Round > 1 only)
-For each CRITICAL/MODERATE item from Round [N-1]:
+For each CRITICAL/MODERATE item from your previous report:
 - **Finding**: [the prior finding, abbreviated]
 - **Location verified**: [file:line range or identifier in the current codebase]
 - **Current state**: Resolved | Partially resolved | Unresolved
@@ -492,8 +493,8 @@ Include 4–8 entries covering the most important patterns.]
 
 ## Pattern Inventory Diff (Round > 1 only)
 - **Added**: [patterns canonicalized for the first time this round]
-- **Deprecated**: [patterns that were canonical in Round N-1 and have been
-  superseded or removed — describe the migration]
+- **Deprecated**: [patterns that were canonical in your previous report and
+  have been superseded or removed — describe the migration]
 - **Drift**: [patterns whose canonical location changed without explicit
   deprecation; treat as at minimum a MODERATE finding]
 
@@ -525,7 +526,6 @@ commit: [12-char SHA from Step 1]
 crit: [N]
 mod: [N]
 min: [N]
-skipped: false
 ```
 
 ## Priority Fix List

@@ -8,7 +8,7 @@ tools: Read, Bash, Write, mcp__playwright
 
 # Design Critic Agent
 # Role: Adversarial UX discriminator — evaluates the built app from a non-technical user's perspective and actively probes for usability/accessibility breaks
-# Reads from: planner_output.md, HANDOFF.md, design_critique_round_N-1.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/progress.md (the REVISION COMPLETE record for this round, if any), pipeline-state/value-function.md (scoring formula), pipeline-state/attack-library.md (UX/accessibility/failure-mode probes)
+# Reads from: planner_output.md, HANDOFF.md, your most recent prior design_critique_round_M.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/progress.md (the REVISION COMPLETE record for this round, if any), pipeline-state/value-function.md (scoring formula), pipeline-state/attack-library.md (UX/accessibility/failure-mode probes)
 # Writes to: design_critique_round_N.md, pipeline-state/ux-checkpoint.md
 
 ---
@@ -92,9 +92,10 @@ data dependency:
 
 2. `HANDOFF.md` — to understand what was built and how to start the application.
 
-3. `design_critique_round_N-1.md` (if Round > 1) — your previous critique report.
-   Read it in full. Your testing in this round must verify that every finding marked
-   CRITICAL or MODERATE in the previous report has been addressed. Lead your findings
+3. Your previous critique report (if Round > 1): the existing
+   `design_critique_round_M.md` with the highest M below N. Read it in full.
+   Your testing in this round must verify that every finding marked CRITICAL
+   or MODERATE in the previous report has been addressed. Lead your findings
    section with a regression check on these items.
 
 4. `pipeline-state/progress.md`: find the most recent
@@ -415,10 +416,10 @@ Be direct: state whether this product would succeed or fail with a real non-tech
 and the one or two things most responsible for that conclusion.]
 
 ## Regression Check (Round > 1 only)
-- Resolved from Round [N-1]: [list CRITICAL/MODERATE items confirmed fixed, with the
+- Resolved from your previous report: [list CRITICAL/MODERATE items confirmed fixed, with the
   specific user action you took to verify]
-- Regressions from Round [N-1]: [items previously resolved that have re-emerged]
-- Unresolved from Round [N-1]: [items that remain unfixed]
+- Regressions from your previous report: [items previously resolved that have re-emerged]
+- Unresolved from your previous report: [items that remain unfixed]
 
 ## Findings
 
@@ -478,7 +479,6 @@ commit: [12-char SHA from Step 1]
 crit: [N]
 mod: [N]
 min: [N]
-skipped: false
 ```
 
 ## Priority Fix List

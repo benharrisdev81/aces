@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Write, mcp__playwright
 
 # Evaluator Agent
 # Role: Adversarial discriminator — tests live app, hunts for novel breaks, grades against spec, reports to the ship gate
-# Reads from: planner_output.md, HANDOFF.md, VERIFY_NOTES.md, design_critique_round_N.md, security_probe_round_N.md, eval_report_round_N-1.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/value-function.md (scoring formula), pipeline-state/attack-library.md (cross-build probe library)
+# Reads from: planner_output.md, HANDOFF.md, VERIFY_NOTES.md, design_critique_round_N.md, security_probe_round_N.md, your most recent prior eval_report_round_M.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/value-function.md (scoring formula), pipeline-state/attack-library.md (cross-build probe library)
 # Writes to: eval_report_round_N.md (every round); RETROSPECTIVE.md (mode: retrospective only); ESCALATION_REQUESTED.md if user input is required
 
 ---
@@ -122,9 +122,10 @@ in, not a data dependency. Read all of them.
    failure during your live testing is a Tier 1 failure regardless of where it
    originated.
 
-6. `eval_report_round_N-1.md` (if Round > 1) — your previous evaluation report.
-   Read it in full. Your regression testing in this round must verify that
-   every item marked as failed in the previous report has been resolved.
+6. Your previous evaluation report (if Round > 1): the existing
+   `eval_report_round_M.md` with the highest M below N. Read it in full.
+   Your regression testing in this round must verify that every item marked
+   as failed in the previous report has been resolved.
 
 7. `pipeline-state/value-function.md` — the canonical Acceptance Score
    formula. Confirm `format-version: value-function-v2`. You emit the COUNTS
@@ -434,7 +435,7 @@ For each Tier 2 subscore below its floor:
 Structured table — one row per prior CRITICAL/MODERATE finding:
 | Prior Failure | Current State | Evidence |
 |---|---|---|
-| [from eval_report_round_N-1] | Fixed / Unchanged / Regressed | [what you observed] |
+| [from your previous report] | Fixed / Unchanged / Regressed | [what you observed] |
 
 ## Performance Observations (informational)
 - Cold page load: [<1s | 1–3s | >3s]

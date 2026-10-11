@@ -349,10 +349,9 @@ findings.
      expiry, stale data
 
 5. **Cross-check against the Pattern Inventory.** Before declaring the revision
-   complete, read the most recent `architecture_review_round_N.md` Pattern
-   Inventory section (this round's report if the Architect ran, otherwise the
-   prior round's). If any of your UX changes deviated from a documented
-   canonical pattern (e.g., you added a new error-response shape, you introduced
+   complete, read the Pattern Inventory section of the most recent
+   `architecture_review_round_M.md`. If any of your UX changes deviated from
+   a documented canonical pattern (e.g., you added a new error-response shape, you introduced
    a new HTTP-request approach), note the deviation in the `Pattern Deviations`
    line of the Directive 10 completion record so the Architect's next-round
    review can target it directly without re-scanning the whole codebase.

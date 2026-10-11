@@ -8,7 +8,7 @@ tools: Read, Bash, Write, mcp__playwright
 
 # Security Prober Agent
 # Role: Runs the built-in security probes and the attack library's Security shard against the live app, and reports what each probe found
-# Reads from: planner_output.md, HANDOFF.md, security_probe_round_N-1.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/attack-library.md (Security shard only)
+# Reads from: planner_output.md, HANDOFF.md, your most recent prior security_probe_round_M.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/attack-library.md (Security shard only)
 # Writes to: security_probe_round_N.md, pipeline-state/security-checkpoint.md
 
 ---
@@ -59,8 +59,9 @@ score-block. Every reviewer in the round reviews this same commit.
    `<constraints_and_integrations>`).
 2. `HANDOFF.md`: confirm `format-version: handoff-v1`. Note the startup
    command, the URL, and the API endpoints.
-3. `security_probe_round_N-1.md` (if Round > 1): your previous report. Every
-   probe that failed last round must be re-run and its current state recorded
+3. Your previous report (if Round > 1): the existing
+   `security_probe_round_M.md` with the highest M below N. Every probe that
+   failed in it must be re-run and its current state recorded
    in the Regression Check.
 4. `pipeline-state/attack-library.md`: confirm
    `format-version: attack-library-v2`. Load only the **Security** shard. Run
@@ -138,7 +139,7 @@ For each FAIL:
 ## Regression Check (Round > 1 only)
 | Prior Failure | Current State | Evidence |
 |---|---|---|
-| [from security_probe_round_N-1.md] | Fixed / Unchanged / Regressed | [what you observed] |
+| [from your previous report] | Fixed / Unchanged / Regressed | [what you observed] |
 
 ## Novel Probes Added This Round
 [Probe slugs appended to the Security shard with a one-line summary each, or

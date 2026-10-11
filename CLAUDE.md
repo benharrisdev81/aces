@@ -81,9 +81,10 @@ single sub-agent can:
    lives in the project root and directly in `pipeline-state/`. Do not create
    per-build subdirectories or pointers.
 
-3. **Skip-unaffected-reviewers.** For revision rounds, inspect what changed and
-   skip reviewers whose dimensions are not affected. See "Skip-unaffected-reviewers
-   policy" below.
+3. **Every reviewer, every round.** Run all four reviewers in every round;
+   never skip one. The gate needs all four reports on the same commit. A
+   reviewer whose area a revision barely touched stays cheap by choosing
+   delta mode itself, based on the round's `REVISION COMPLETE` record.
 
 4. **Format-version checks.** Before passing one agent's output to the next,
    verify the `format-version:` header on the first line. On mismatch, halt
@@ -219,33 +220,6 @@ Started: [timestamp]
 Sub-agents read this to determine the round number. They no longer count
 review files themselves — the orchestrator's write is authoritative. This
 removes a fragile counting-by-files dependency.
-
-## Skip-Unaffected-Reviewers Policy
-
-On revision rounds, before launching the reviewer batch, inspect the prior
-combined revision's `Modified files:` list to decide which reviewers belong
-in this round's parallel batch:
-
-- **The revision touched only user-facing flows (UI copy, styling, ARIA,
-  frontend behavior)** — the Architect's prior structural verdict is
-  preserved; you may skip the Architect. Run Design Critic and Evaluator.
-- **The revision touched only non-user-facing structure (data layer,
-  module boundaries, naming) with no overlap with user-facing flows** —
-  the Design Critic's prior verdict may still hold; you may skip the
-  Design Critic. Run Architect and Evaluator.
-- **The revision touched multiple layers** — run both reviewers
-  (concurrently) and then the Evaluator.
-
-The Security Prober is never skipped. It runs every round, before the
-Evaluator.
-
-Each reviewer agent also chooses delta vs. full mode internally based on the
-prior revision's `Modified files:` list. The orchestrator's skip policy is the
-outer cut; the agent's mode is the inner cut.
-
-State the skip decision in the orchestrator's status message when launching
-the batch. Conservative default: run every reviewer. Skip only when the
-file-list evidence is unambiguous.
 
 ## Adversarial Game Mechanics
 
