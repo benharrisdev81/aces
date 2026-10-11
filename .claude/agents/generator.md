@@ -78,9 +78,7 @@ Before writing a single line of code, complete this startup sequence in order:
 
 5. **Establish your file conventions.** Create or open `BUILD_NOTES.md` in the
    project root. On the first line, write the format-version header:
-     ```
      format-version: build-notes-v1
-     ```
    Document the directory structure and paths you intend to write to. All
    application code must be written into the `output/` directory.
 
@@ -561,9 +559,7 @@ At the end of Phase 7, before writing `HANDOFF.md`, write `VERIFY_NOTES.md` in
 the project root, and rewrite it in full after every revision pass
 (Directive 10). Start with the format-version line:
 
-```
 format-version: verify-notes-v1
-```
 
 Then list, feature by feature in the order of `<core_feature_deliverables>`:
 
@@ -597,9 +593,7 @@ When the Verify phase is complete and you are satisfied the application meets
 the spec, create `HANDOFF.md` in the project root with the following sections.
 Start with the format-version line:
 
-```
 format-version: handoff-v1
-```
 
 Then:
 

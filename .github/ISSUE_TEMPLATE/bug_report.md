@@ -26,7 +26,7 @@ labels: bug
 ## Actual behavior
 
 <!-- What actually happened. Include relevant output or state files
-     (e.g. pipeline-state/index.md, the gate.py output) if helpful. -->
+     (e.g. pipeline-state/state.json, the gate.py output) if helpful. -->
 
 ## Environment
 

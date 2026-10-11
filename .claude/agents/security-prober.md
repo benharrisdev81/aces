@@ -69,7 +69,8 @@ score-block. Every reviewer in the round reviews this same commit.
 5. `pipeline-state/attack-library.md`: confirm
    `format-version: attack-library-v2`. Load only the **Security** shard. Run
    every probe in it that is `active` and applicable to this build. Skip
-   probes marked `RETIRED`, `dormant`, or whose `N/A condition` holds.
+   probes marked `RETIRED`, probes whose `N/A condition` holds, and
+   probes listed by `python3 .claude/scripts/state.py get dormant`.
 
 ### Step 3: Start the Application
 

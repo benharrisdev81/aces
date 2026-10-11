@@ -1,0 +1,11 @@
+{
+  "round": 0,
+  "step": "clarify",
+  "pending": [],
+  "done": [],
+  "commit": null,
+  "escalation": null,
+  "generator_invocations": 0,
+  "build_started": null,
+  "dormant": []
+}
