@@ -13,11 +13,10 @@ rounds, and Round 5 is reviewed and gated like any other. A Fable build that fai
 consecutive rounds almost certainly has a spec problem (escalation territory), not a
 generation problem.
 
-The pipeline is structured as an **adversarial minimax game**: the Generator
-maximizes a shared scalar (the Acceptance Score, defined in
-`pipeline-state/value-function.md`); the Architect, Design Critic, and
-Evaluator collectively minimize it by landing confirmed defects. Confirmed
-defects are harvested into
+The pipeline is structured as an **adversarial game**: the Generator tries to
+pass the ship gate (defined in `pipeline-state/ship-gate.md`), and the
+Architect, Design Critic, Security Prober, and Evaluator try to land
+confirmed defects that fail it. Confirmed defects are harvested into
 `pipeline-state/attack-library.md` so the discriminators' test surface
 grows monotonically across rounds and across builds. See "Adversarial
 Game Mechanics" below.
@@ -226,34 +225,32 @@ removes a fragile counting-by-files dependency.
 
 ## Adversarial Game Mechanics
 
-The pipeline is a minimax game over a single shared scalar. The Generator
-maximizes the **Acceptance Score**; the discriminator agents (Architect,
-Design Critic, Evaluator) minimize it by landing confirmed defects. The
-scalar, the gate precedence, and the per-reviewer
-contributions are all defined in `pipeline-state/value-function.md` — the
-canonical reference, which agents consume rather than re-deriving.
+The Generator tries to pass the ship gate; the four reviewers try to land
+confirmed defects that fail it. `pipeline-state/ship-gate.md` defines the
+gate's pass conditions and the exact score-block schema. It is the
+human-readable mirror of `.claude/scripts/gate.py`, which is the source of
+truth; change both together.
 
-The arithmetic is computed by `.claude/scripts/score.py`, not by hand.
-Reviewers emit COUNTS in a fenced `score-block`; the orchestrator assembles
-them into one JSON payload and runs the script, which returns the
-deterministic Acceptance Score, the threshold check, and a ready-to-append
-history row. This keeps the headline number and the PASS-on-score gate
-deterministic rather than model-estimated.
+Each reviewer emits one fenced `score-block` of counts and subscores, stamped
+with the commit it reviewed. `gate.py` reads the four reports directly,
+returns INVALID on a malformed block or a commit mismatch, and otherwise
+checks every pass condition against that one commit. Nothing is averaged,
+the floors never tighten between rounds, and nothing carries over. The gate
+also prints an `open_defect_load` statistic that never affects the result.
 
 State files that realize the game:
 
-- **`pipeline-state/value-function.md`** — canonical formula, gate
-  precedence, and the machine-readable `score-block` schema.
-- **`.claude/scripts/score.py`** — deterministic calculator; the only thing
-  that does the multiplication and summation.
+- **`pipeline-state/ship-gate.md`**: the pass conditions and the score-block
+  schema, in plain language.
+- **`.claude/scripts/gate.py`**: the deterministic gate, tested by
+  `.claude/scripts/tests/test_gate.py`.
 - **`pipeline-state/attack-library.md`** — sharded, cross-build probe
   library. Reviewers load only their dimension's shard and propose a probe
   in their report only when a genuinely new failure class surfaces
   (discovery-gated, not mandatory); the orchestrator alone appends (#13).
 
-The orchestrator's responsibilities #11–#14 above own the writes. Reviewers
-emit `score-block` counts and probe findings; the orchestrator runs the
-script and composes the round totals.
+Responsibilities #11 to #14 above own the gate run, the terminal files, and
+the library writes. Reviewers write only their own reports.
 
 ## Harvest-Back Protocol (Cross-Build Memory)
 
@@ -261,8 +258,8 @@ Each build runs in its own clone of this template, so nothing accumulates in
 the template by default. Three files are designed to compound across builds:
 `pipeline-state/attack-library.md` (discriminator probes),
 `pipeline-state/playbook.md` (Generator lessons), and
-`pipeline-state/build-ledger.md` (one summary row per build — the substrate
-for threshold recalibration). The harvest-back protocol returns a finished
+`pipeline-state/build-ledger.md` (one summary row per build, the substrate
+for gate calibration). The harvest-back protocol returns a finished
 build's deltas to the template as a reviewable PR.
 
 **When:** after `RETROSPECTIVE.md` is written and Responsibilities #13
@@ -414,11 +411,11 @@ content work between the two calls):
 | `pipeline-state/session.md` | Generator (per-feature progress) | Orchestrator (resume) |
 | `pipeline-state/user-intervention.md` | Orchestrator (from "Pause build" or escalation answers) | Generator |
 | `pipeline-state/cost.md` | Orchestrator (per-round token usage) | Orchestrator |
-| `pipeline-state/value-function.md` | Template (canonical) | All reviewer agents, Generator |
+| `pipeline-state/ship-gate.md` | Template (mirror of `gate.py`) | Orchestrator, user |
 | `pipeline-state/attack-library.md` | Orchestrator only (appends reviewers' Proposed Probes after the build, #13) | Architect, Design Critic, Security Prober (own shard only) |
 | `pipeline-state/playbook.md` | Orchestrator (post-build lesson harvesting) | Generator only (never reviewers) |
-| `pipeline-state/build-ledger.md` | Orchestrator (one row per build, via harvest PR) | Orchestrator, user (threshold calibration) |
-| `.claude/scripts/score.py` | Template (canonical calculator) | Orchestrator (runs each round) |
+| `pipeline-state/build-ledger.md` | Orchestrator (one row per build, via harvest PR) | Orchestrator, user (gate calibration) |
+| `.claude/scripts/gate.py` | Template (canonical gate) | Orchestrator (runs each round) |
 | `.claude/scripts/harvest.sh` | Template (canonical plumbing) | Orchestrator (runs post-RETROSPECTIVE) |
 
 ## Format-Version Headers
@@ -440,7 +437,7 @@ check it and surface a clear error on mismatch rather than parsing garbage.
 | `EVAL_UNRECOVERABLE.md` | `eval-unrecoverable-v1` |
 | `RETROSPECTIVE.md` | `retrospective-v1` |
 | `ESCALATION_REQUESTED.md` | `escalation-v1` |
-| `pipeline-state/value-function.md` | `value-function-v2` |
+| `pipeline-state/ship-gate.md` | `ship-gate-v1` |
 | `pipeline-state/attack-library.md` | `attack-library-v2` |
 | `pipeline-state/playbook.md` | `playbook-v1` |
 | `pipeline-state/build-ledger.md` | `build-ledger-v1` |

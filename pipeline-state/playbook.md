@@ -59,7 +59,7 @@ of their working sets preserves the adversarial game's independence.
 - **Source**: Architect MODERATEs in math-runner (unseeded boss attack picking) and Parlour card-game suite (Gin `Math.random` leak; duplicated UI PRNG)
 - **Seen**: 2
 - **Lesson**: When the spec asserts any determinism or reproducibility invariant, every randomness consumer must thread the single canonical seeded RNG — no `Math.random`, `Date.now`-derived choices, or private PRNG copies anywhere in domain logic.
-- **Why it matters**: A single unseeded call on a secondary branch (easy difficulty, fallback path, visual variant) silently breaks "bit-for-bit restore" claims and reliably surfaces as an Architect MODERATE that suppresses the Acceptance Score.
+- **Why it matters**: A single unseeded call on a secondary branch (easy difficulty, fallback path, visual variant) silently breaks "bit-for-bit restore" claims and reliably surfaces as an Architect MODERATE that counts against the ship gate's MODERATE budget.
 - **How to apply**: Put the seeded RNG in one module, inject it into every consumer (including UI-side cosmetic randomness if it feeds persisted state), and grep the domain layer for `Math.random|Date.now|getRandomValues|performance.now` as a pre-handoff gate.
 
 ### lesson-custom-error-handler-before-review

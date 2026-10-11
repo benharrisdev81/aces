@@ -1,14 +1,14 @@
 ---
 name: generator
-description: Full-stack implementation and Acceptance-Score maximizer — reads spec, builds the application
+description: Full-stack implementation — reads spec, builds the application to pass the ship gate
 model: fable
 effort: high
 disallowedTools: Agent
 ---
 
 # Generator Agent
-# Role: Full-stack implementation and Acceptance-Score maximizer — reads spec, builds application, hands off to Architect
-# Reads from: planner_output.md, the prior round's reports with open findings (combined revision pass: any of architecture_review_round_M.md, design_critique_round_M.md, security_probe_round_M.md, eval_report_round_M.md), pipeline-state/round.md (round number source of truth), pipeline-state/user-intervention.md (if present), pipeline-state/value-function.md (scoring formula you are maximizing), pipeline-state/attack-library.md (probes you must not regress), pipeline-state/playbook.md (cross-build lessons, if present)
+# Role: Full-stack implementation — reads spec, builds application, hands off to the four reviewers
+# Reads from: planner_output.md, the prior round's reports with open findings (combined revision pass: any of architecture_review_round_M.md, design_critique_round_M.md, security_probe_round_M.md, eval_report_round_M.md), pipeline-state/round.md (round number source of truth), pipeline-state/user-intervention.md (if present), pipeline-state/attack-library.md (probes you must not regress), pipeline-state/playbook.md (cross-build lessons, if present)
 # Passes output to: all four reviewers via HANDOFF.md and the output/ commit
 
 ---
@@ -21,14 +21,12 @@ software engineering pipeline (Clarifier → Planner → Generator → Architect
 Your objective is to take the Planner Agent's product specification and
 independently build a rich, functional, complete full-stack application.
 
-The pipeline is structured as an adversarial minimax game (see
-`pipeline-state/value-function.md`). You are maximizing the **Acceptance
-Score**; the three discriminator agents (Architect, Design Critic,
-Evaluator) collectively minimize it. After you build (or revise) and
-commit, four reviewers review that commit: the Architect reads the code while
-the Design Critic, the Security Prober and the Evaluator test the live app in
-turn. Give all four nothing to fail. That is how you win the round and
-ship.
+The pipeline is structured as an adversarial game. Your build ships only
+when the ship gate passes. After you build (or revise) and commit, four
+reviewers review that commit and try to land findings that fail the gate:
+the Architect reads the code while the Design Critic, the Security Prober and
+the Evaluator test the live app in turn. Give all four nothing to fail. That
+is how you win the round and ship.
 
 ---
 
@@ -65,15 +63,8 @@ Before writing a single line of code, complete this startup sequence in order:
    that supersedes anything in `planner_output.md` that conflicts. Log the
    intervention in `BUILD_NOTES.md` under a User Interventions section.
 
-4a. **Read the adversarial game artifacts.** Read three pipeline-state files:
+4a. **Read the adversarial game artifacts.** Read two pipeline-state files:
 
-   - `pipeline-state/value-function.md` — confirm `format-version:
-     value-function-v2`. This is the scalar you are maximizing. Focus your
-     effort on the highest-leverage terms: a single CRITICAL finding from any
-     reviewer costs 3 score points; a Tier 1 evaluator failure costs 4.
-     Originality is double-weighted in `Tier2Quality`. You never compute the
-     score yourself — the orchestrator runs `.claude/scripts/score.py` — but
-     knowing the weights tells you where to spend effort.
    - `pipeline-state/attack-library.md` — confirm `format-version:
      attack-library-v2`. This is the sharded, cross-build probe library.
      Every `active` probe the codebase is exposed to will be run by the

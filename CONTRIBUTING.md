@@ -3,15 +3,16 @@
 Thanks for your interest in improving ACES. This project is a template for an
 autonomous, adversarial multi-agent build pipeline — most of it is prompt
 engineering (the sub-agent definitions in `.claude/agents/`), orchestration
-rules (`CLAUDE.md`), and the shared scoring logic (`.claude/scripts/score.py`).
+rules (`CLAUDE.md`), and the ship gate (`.claude/scripts/gate.py`).
 
 ## Ways to contribute
 
 - **Improve a sub-agent prompt** — sharpen the Clarifier, Planner, Generator,
   Architect, Design Critic, or Evaluator.
-- **Refine the game mechanics** — the value function, scoreboard, or
-  attack-library schema under `pipeline-state/`.
-- **Fix or extend the scorer** — `.claude/scripts/score.py`.
+- **Refine the game mechanics**: the ship gate definition
+  (`pipeline-state/ship-gate.md`) or the attack-library schema under
+  `pipeline-state/`.
+- **Fix or extend the gate**: `.claude/scripts/gate.py`.
 - **Documentation** — clarify the README or `CLAUDE.md` orchestration steps.
 
 ## Workflow
@@ -21,7 +22,8 @@ rules (`CLAUDE.md`), and the shared scoring logic (`.claude/scripts/score.py`).
 2. Fork the repo and create a feature branch (`git checkout -b my-change`).
 3. Make your change. Keep edits focused and consistent with the surrounding
    style — match the existing tone and structure of the agent prompts.
-4. If you change `score.py`, make sure it still runs and produces a valid row.
+4. If you change `gate.py`, update `pipeline-state/ship-gate.md` to match and
+   make sure `python3 .claude/scripts/tests/test_gate.py` still passes.
 5. Open a pull request using the PR template and link the related issue.
 
 ## Guidelines
@@ -32,8 +34,8 @@ rules (`CLAUDE.md`), and the shared scoring logic (`.claude/scripts/score.py`).
 - **No secrets, ever.** Don't commit API keys, tokens, or `.env` files. The
   Generator's own security baseline forbids this — the repo should model it.
 - **Preserve the adversarial framing.** Changes should keep the
-  Generator-vs-discriminator minimax structure coherent (see
-  `pipeline-state/value-function.md`).
+  Generator-vs-discriminator structure coherent (see
+  `pipeline-state/ship-gate.md`).
 
 ## License
 
