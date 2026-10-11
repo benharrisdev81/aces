@@ -6,6 +6,10 @@ The discriminators' growing test set. Confirmed flaws landed in any round of
 any build are distilled into reusable probes here, so the test surface grows
 across builds and the Generator cannot converge on a fixed beatable rubric.
 
+Only the orchestrator writes this file (CLAUDE.md Responsibility #13).
+Reviewers propose new probes in the `## Proposed Probes` section of their
+own reports, and the orchestrator dedups and appends them after the build.
+
 Builds run in per-build clones of the template repo: new probes return to
 the template through the harvest-back protocol (CLAUDE.md Responsibility
 #17) as a reviewable PR. Harvest-time dedup is checked against the
@@ -18,7 +22,6 @@ rather than the entire file. As the library grows across many builds, loading
 everything would dilute attention and waste context; read only your section:
 
 - **Security Prober** → the **Security** shard.
-- **Evaluator** → the **Failure Modes / Functional** shard.
 - **Design Critic** → the **Accessibility / UX** and **Failure Modes / Functional** shards.
 - **Architect** → the **Structural** shard.
 
@@ -136,7 +139,7 @@ Do not reorder or rewrite existing probes — append only.
 
 ---
 
-## Shard: Failure Modes / Functional  (Evaluator + Design Critic)
+## Shard: Failure Modes / Functional  (Design Critic)
 
 ### probe-i18n-non-ascii-emoji
 - **Added**: seed

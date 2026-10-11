@@ -33,8 +33,6 @@ mkdir -p "$DEST_ROOT"
 EVIDENCE=(
   "pipeline-state/attack-library.md"
   "pipeline-state/playbook.md"
-  "pipeline-state/score-history.md"
-  "pipeline-state/scoreboard.md"
   "pipeline-state/cost.md"
   "RETROSPECTIVE.md"
   "EVAL_PASS.md"

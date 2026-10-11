@@ -8,7 +8,7 @@ tools: Read, Bash, Write, mcp__playwright
 
 # Security Prober Agent
 # Role: Runs the built-in security probes and the attack library's Security shard against the live app, and reports what each probe found
-# Reads from: planner_output.md, HANDOFF.md, security_probe_round_N-1.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/attack-library.md (Security shard only)
+# Reads from: planner_output.md, HANDOFF.md, your most recent prior security_probe_round_M.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/attack-library.md (Security shard only)
 # Writes to: security_probe_round_N.md, pipeline-state/security-checkpoint.md
 
 ---
@@ -47,6 +47,10 @@ Announce your round number at the start of your output:
 Append to `pipeline-state/security-checkpoint.md` (create it if absent):
   Round [N] | IN PROGRESS | [timestamp]
 
+Record the commit under review: run `git -C output rev-parse --short=12 HEAD`
+now, before you begin reviewing, and use that value as `commit:` in your
+score-block. Every reviewer in the round reviews this same commit.
+
 ### Step 2: Read Context Files
 
 1. `planner_output.md`: confirm `format-version: planner-v1`. Note whether the
@@ -55,8 +59,9 @@ Append to `pipeline-state/security-checkpoint.md` (create it if absent):
    `<constraints_and_integrations>`).
 2. `HANDOFF.md`: confirm `format-version: handoff-v1`. Note the startup
    command, the URL, and the API endpoints.
-3. `security_probe_round_N-1.md` (if Round > 1): your previous report. Every
-   probe that failed last round must be re-run and its current state recorded
+3. Your previous report (if Round > 1): the existing
+   `security_probe_round_M.md` with the highest M below N. Every probe that
+   failed in it must be re-run and its current state recorded
    in the Regression Check.
 4. `pipeline-state/attack-library.md`: confirm
    `format-version: attack-library-v2`. Load only the **Security** shard. Run
@@ -70,9 +75,16 @@ Start the application from `output/` with the startup command in
 only `curl`; use the `playwright` MCP browser tools when a probe needs a
 rendered page.
 
-If the application fails to start, do not debug or patch it. Mark every
-applicable probe `NOT TESTED`, include the exact error output in the report,
-and go to Output.
+If the application fails to start, do not debug or patch it. Then:
+
+- If `design_critique_round_N.md` already records an app-start failure for
+  this round, the Design Critic owns the finding. Write
+  `BLOCKED: app did not start` and the exact error output at the top of your
+  report, record no probe results, set both SCORE-BLOCK counts to 0, and go
+  to Output.
+- Otherwise you are the first agent to hit it. Mark every applicable probe
+  `NOT TESTED`, include the exact error output in the report, and go to
+  Output.
 
 ---
 
@@ -100,9 +112,11 @@ and `probe-idor-identifier-swap`), run it once and report it once.
    FAIL. N/A only if no URL or API call contains a per-entity identifier.
 
 **Novel probes (discovery-gated).** If your probing surfaces a genuinely new
-security failure class, append a probe for it to the end of the Security
-shard of `pipeline-state/attack-library.md`, using the schema there. Adding
-zero probes is the correct outcome for a round where nothing new surfaced.
+security failure class, propose a probe for it in your report's Proposed
+Probes section. Proposing none is the correct outcome for a round where
+nothing new surfaced. Never edit `pipeline-state/attack-library.md` yourself:
+the orchestrator is its only writer, and it dedups and appends proposals after
+the build.
 
 ---
 
@@ -124,7 +138,8 @@ Then:
 | [built-in name or probe-slug] | Built-in / Security shard | PASS / FAIL / N/A / NOT TESTED | [request sent and response observed] |
 
 ## Failures
-For each FAIL:
+One failure per root cause: when several probes fail for the same reason,
+file one failure and list every affected probe under it. For each FAIL:
 - Probe: [name or slug]
 - Severity: [from the probe's `Severity if confirmed`]
 - Steps to Reproduce: [exact request or user action]
@@ -134,11 +149,13 @@ For each FAIL:
 ## Regression Check (Round > 1 only)
 | Prior Failure | Current State | Evidence |
 |---|---|---|
-| [from security_probe_round_N-1.md] | Fixed / Unchanged / Regressed | [what you observed] |
+| [from your previous report] | Fixed / Unchanged / Regressed | [what you observed] |
 
-## Novel Probes Added This Round
-[Probe slugs appended to the Security shard with a one-line summary each, or
-"None: nothing new surfaced."]
+## Proposed Probes
+[Only if a genuinely new security failure class surfaced (discovery-gated).
+For each, write the probe in the attack library's schema with
+`Shard: Security`, and name the finding in this report it came from.
+Otherwise write "None: nothing new surfaced."]
 
 ## SCORE-BLOCK
 `security_fail` counts probes with result FAIL. `not_tested` counts
@@ -146,6 +163,7 @@ applicable probes you could not run. N/A probes count toward neither.
 
 ```score-block
 reviewer: security_prober
+commit: [12-char SHA from Step 1]
 security_fail: [N]
 not_tested: [N]
 ```

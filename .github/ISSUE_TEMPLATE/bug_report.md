@@ -11,7 +11,7 @@ labels: bug
 
 ## Pipeline stage
 
-<!-- Which stage / file is involved? e.g. Generator, Architect, score.py, CLAUDE.md orchestration -->
+<!-- Which stage / file is involved? e.g. Generator, Architect, gate.py, CLAUDE.md orchestration -->
 
 ## Steps to reproduce
 
@@ -26,7 +26,7 @@ labels: bug
 ## Actual behavior
 
 <!-- What actually happened. Include relevant output or state files
-     (e.g. pipeline-state/index.md, score-history.md) if helpful. -->
+     (e.g. pipeline-state/index.md, the gate.py output) if helpful. -->
 
 ## Environment
 

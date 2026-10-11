@@ -1,21 +1,22 @@
 # Autonomous Build Pipeline
 
 ## Pipeline Overview
-Seven sub-agents: Clarifier → Planner → Generator → (Architect ∥ Design Critic) → Security Prober → Evaluator.
-After each Generator build (or revision), the Architect (structural quality) and the Design
-Critic (usability) review **concurrently** — they are independent: the Architect reads only
-the code, the Design Critic uses only the live app. If either lands findings, the Generator
-makes a **single combined revision pass** addressing both reports. Then the Security Prober
-runs the security probes, and after it the Evaluator runs functional tests. The Evaluator
-can trigger Generator re-runs up to 5 rounds. A Fable build that fails 5 consecutive rounds
-almost certainly has a spec problem (escalation territory), not a generation problem.
+Seven sub-agents: Clarifier → Planner → Generator → (Architect ∥ Design Critic → Security Prober → Evaluator).
+Each round starts with one Generator pass (the initial build, or one combined revision) that
+commits to `output/`. Every reviewer then reviews that same commit. The Architect reads only
+the code and runs in parallel with the **live-app chain**: the Design Critic, then the Security
+Prober, then the Evaluator, one after another, each starting and stopping its own app
+instance. Every report records the commit it reviewed. The orchestrator then runs
+`.claude/scripts/gate.py`, which alone decides PASS or FAIL from the four reports. On FAIL,
+the next round's Generator pass addresses every report with open findings. The cap is 5
+rounds, and Round 5 is reviewed and gated like any other. A Fable build that fails 5
+consecutive rounds almost certainly has a spec problem (escalation territory), not a
+generation problem.
 
-The pipeline is structured as an **adversarial minimax game**: the Generator
-maximizes a shared scalar (the Acceptance Score, defined in
-`pipeline-state/value-function.md`); the Architect, Design Critic, and
-Evaluator collectively minimize it by landing confirmed defects. Per-round
-outcomes are recorded as Generator-vs-Discriminator results in
-`pipeline-state/scoreboard.md`, and confirmed defects are harvested into
+The pipeline is structured as an **adversarial game**: the Generator tries to
+pass the ship gate (defined in `pipeline-state/ship-gate.md`), and the
+Architect, Design Critic, Security Prober, and Evaluator try to land
+confirmed defects that fail it. Confirmed defects are harvested into
 `pipeline-state/attack-library.md` so the discriminators' test surface
 grows monotonically across rounds and across builds. See "Adversarial
 Game Mechanics" below.
@@ -72,16 +73,17 @@ single sub-agent can:
 
 1. **Round state.** Maintain `pipeline-state/round.md` as the single source of
    truth for the current round number; sub-agents read it instead of counting
-   files. Update it at the start of every reviewer cycle (parallel Architect +
-   Design Critic, then Evaluator). See "Round state file" below.
+   files. Update it at the start of every round, before the Generator pass.
+   See "Round state file" below.
 
 2. **One build per clone.** Each build runs in its own clone, so build state
    lives in the project root and directly in `pipeline-state/`. Do not create
    per-build subdirectories or pointers.
 
-3. **Skip-unaffected-reviewers.** For revision rounds, inspect what changed and
-   skip reviewers whose dimensions are not affected. See "Skip-unaffected-reviewers
-   policy" below.
+3. **Every reviewer, every round.** Run all four reviewers in every round;
+   never skip one. The gate needs all four reports on the same commit. A
+   reviewer whose area a revision barely touched stays cheap by choosing
+   delta mode itself, based on the round's `REVISION COMPLETE` record.
 
 4. **Format-version checks.** Before passing one agent's output to the next,
    verify the `format-version:` header on the first line. On mismatch, halt
@@ -105,54 +107,57 @@ single sub-agent can:
    confirm continuation.
 
 9. **Pipeline index.** Maintain `pipeline-state/index.md` — a 30-line at-a-glance
-   summary of pipeline state (current round, last phase, current reviewer
-   verdicts, last revision summary). Reading agents start here; deeper files
+   summary of pipeline state (current round, last phase, latest gate
+   result, last revision summary). Reading agents start here; deeper files
    are reference material.
 
-10. **Retrospective.** The Evaluator writes `RETROSPECTIVE.md` on PASS or
-    UNRECOVERABLE. Surface it to the user when the pipeline halts.
+10. **Retrospective.** After you write `EVAL_PASS.md` or
+    `EVAL_UNRECOVERABLE.md`, invoke the Evaluator once with
+    `mode: retrospective`; it writes `RETROSPECTIVE.md`. Surface it to the
+    user when the pipeline halts.
 
-11. **Acceptance Score bookkeeping (computed, never hand-totaled).** After
-    each Evaluator verdict, collect the `score-block` from each reviewer
-    report, read any carried penalties from the prior `score-history.md` row
-    (for reviewers skipped this round), assemble the JSON payload documented
-    in `.claude/scripts/score.py`, and run that script. Paste its emitted row
-    under the table in `pipeline-state/score-history.md` and put the headline
-    Acceptance Score into `pipeline-state/index.md`. Do not compute the
-    scalar yourself — the script is the deterministic source of truth.
-    **Interim, until the gate rewrite:** the Evaluator runs no security
-    probes. Before running the script, set the payload's
-    `evaluator.security_fail` to the Security Prober's `security_fail`, and
-    add the Prober's `not_tested` to `evaluator.not_tested`.
+11. **Ship gate (computed, never judged).** When all four reports for round
+    N exist, run `python3 .claude/scripts/gate.py N --tier <tier>`, taking
+    `<tier>` from the `<originality_tier>` section of `planner_output.md`.
+    The script reads the reports' score-blocks itself; its exit code alone
+    decides the round (see Orchestration Step 5). Put its `Round N:` result
+    line into `pipeline-state/index.md`. Never decide PASS or FAIL yourself,
+    and never edit a report's score-block.
 
-12. **Scoreboard.** After each Evaluator verdict, append one row to
-    `pipeline-state/scoreboard.md` classifying the round as Generator WIN
-    (all reviewers PASS on first contact and score ≥ threshold),
-    or Discriminator WIN (any reviewer landed a finding forcing a revision).
-    The flaw-landed column names the highest-severity finding landed (or
-    `none` on a Generator WIN).
+12. **Terminal files.** Only you write `EVAL_PASS.md` and
+    `EVAL_UNRECOVERABLE.md`, and only from `gate.py` output: `EVAL_PASS.md`
+    after exit 0, `EVAL_UNRECOVERABLE.md` after exit 1 in Round 5. Start each
+    with its format-version line (`eval-pass-v1` or
+    `eval-unrecoverable-v1`). Include the round number, the commit, the
+    gate's full output, and a short summary drawn from that round's reports:
+    what the build does well for a PASS, or every finding still open in the
+    Round 5 reports for UNRECOVERABLE.
 
-13. **Attack-library harvesting.** On any reviewer FAIL, once the finding is
-    confirmed real (not withdrawn via `CONFLICT.md` adjudication), distill it
-    into a probe and append it to the matching dimension shard of
-    `pipeline-state/attack-library.md` using that file's schema and
-    append-only/dedup/retirement policy. The library persists across builds
-    via the harvest-back protocol (Responsibility #17).
+13. **Attack-library harvesting.** You are the only writer of
+    `pipeline-state/attack-library.md`; reviewers never edit it. After the
+    build ends (gate PASS or Round 5 FAIL; for a user-override build, see
+    #14), read the `## Proposed Probes` section of every round's reports. Keep
+    a proposal only if its source finding was real: fixed in a later round, or
+    still open at the end. Append each kept probe to the end of its shard,
+    using that file's schema and append-only/dedup/retirement policy; a
+    duplicate increments the existing probe's `Seen:` count. The library
+    persists across builds via the harvest-back protocol (Responsibility #17).
 
-14. **False-positive accounting (honest auditor).** When `CONFLICT.md`
-    adjudication (or a subsequent Evaluator round) withdraws a finding a
-    reviewer raised, record it in that reviewer's `fp_withdrawn` count for the
-    round the withdrawal is confirmed, so the `FalsePositivePenalty` is
-    attributed to the reviewer that raised it. This is the counterweight that
-    keeps the adversarial framing from rewarding spurious findings — a
-    reviewer that over-reports loses score just as the Generator does.
+14. **User-override acceptance.** If the user accepts a build the gate
+    failed, write `EVAL_PASS.md` per #12, with the line
+    `**Accepted by user override**` under its header, the failing gate
+    output, and the user's words verbatim. Then run the retrospective (#10).
+    Do not run harvesting (#13, #16, #17) automatically. Ask the user
+    separately whether to harvest this build, and run it only on an explicit
+    yes. Never bundle the harvest into the acceptance question.
 
 15. **Missing reports.** If a subagent returns no report file, re-invoke it
     once with `model: opus`; if that also fails, write
     `ESCALATION_REQUESTED.md`. A re-invocation does not consume a round.
 
 16. **Playbook harvesting (Generator memory).** After `RETROSPECTIVE.md` is
-    written (PASS or UNRECOVERABLE), distill the build's transferable
+    written following a gate PASS or a Round 5 FAIL (for a user-override
+    build, see #14), distill the build's transferable
     lessons — especially its "Persistent Failure Patterns" — into
     `pipeline-state/playbook.md` using that file's schema and
     append/dedup/retire policy. The playbook is the Generator's cross-build
@@ -165,7 +170,8 @@ single sub-agent can:
     clones, so probes, lessons, and calibration data do not accumulate in
     the template by themselves. After Responsibilities #13 and #16 are
     complete (post-`RETROSPECTIVE.md`, on PASS **or** UNRECOVERABLE — failed
-    builds usually teach the most), execute the Harvest-Back Protocol below:
+    builds usually teach the most; for a user-override build, see #14),
+    execute the Harvest-Back Protocol below:
     `.claude/scripts/harvest.sh` stages the template's latest `main` in a
     `.harvest/` worktree, the orchestrator merges this build's new
     attack-library probes, playbook lessons, and one `build-ledger.md` row
@@ -189,13 +195,14 @@ When invoked with "Resume build":
 9. Determine re-entry point (check in this order):
    - If `ESCALATION_REQUESTED.md` exists and is unanswered: surface the question to the user; pause.
    - If `CONFLICT.md` exists and is unresolved: surface to the user; pause.
-   - If Evaluator has a round IN PROGRESS: re-invoke the Evaluator.
-   - If the Security Prober has a round IN PROGRESS: re-invoke the Security Prober.
-   - If the Architect or Design Critic has a round IN PROGRESS: re-invoke whichever is in progress (they run concurrently; re-launch both in parallel if both are mid-round).
-   - If one reviewer completed round N but the other never started (and is not skipped under the skip-unaffected policy): invoke the missing reviewer.
-   - If either reviewer issued FAIL for round N but `REVISION COMPLETE — Round N` is absent from progress.md: re-invoke the Generator once, passing the path(s) of every failing report (`architecture_review_round_N.md` and/or `design_critique_round_N.md`) for a single combined revision pass.
-   - If both reviewers completed round N (PASS, or FAIL with the combined revision logged) but `security_probe_round_N.md` does not exist: invoke the Security Prober.
-   - If `security_probe_round_N.md` exists but the Evaluator has not yet run for that round: re-invoke the Evaluator.
+   - If round.md shows Round N > 1 and progress.md has no `REVISION COMPLETE` record for Round N: re-invoke the Generator for the combined revision, passing every Round N-1 report with open findings.
+   - The remaining reviewer branches apply only once the round's Generator pass is complete (`HANDOFF COMPLETE` for Round 1, the `REVISION COMPLETE` record for Round N > 1):
+     - If any reviewer has round N IN PROGRESS in its checkpoint file: re-invoke it. If it belongs to the live-app chain, continue the chain after it.
+     - If `architecture_review_round_N.md` is missing: invoke the Architect.
+     - If any live-app chain report for round N is missing (`design_critique_round_N.md`, `security_probe_round_N.md`, `eval_report_round_N.md`): invoke the first missing agent in chain order (Design Critic, Security Prober, Evaluator) and continue the chain from there. This can run in parallel with the Architect branch above.
+     - If all four round N reports exist and neither `EVAL_PASS.md` nor `EVAL_UNRECOVERABLE.md` exists: run the gate (Orchestration Step 5). The gate is deterministic, so re-running it is safe.
+   - If `EVAL_PASS.md` or `EVAL_UNRECOVERABLE.md` exists but `RETROSPECTIVE.md` does not: invoke the Evaluator with `mode: retrospective`.
+   - If `RETROSPECTIVE.md` exists: the build is finished. Ask the user whether harvesting (#13, #16, #17) already ran before running it.
    - If Generator is mid-phase (session.md shows incomplete phase): re-invoke the Generator, instructing it to read `pipeline-state/session.md` and continue from the last completed feature.
    - If a phase boundary was the last log entry in progress.md (HANDOFF COMPLETE not present): re-invoke the Generator at the next phase.
    - If only Planner has completed (planner_output.md is populated, progress.md is empty): re-invoke the Generator from Phase 1.
@@ -204,8 +211,8 @@ When invoked with "Resume build":
 
 ## Round State File
 
-At the start of every reviewer cycle (each fresh parallel Architect + Design
-Critic launch), write `pipeline-state/round.md`:
+At the start of every round, before that round's Generator pass, write
+`pipeline-state/round.md`:
 
 ```
 Current Round: N
@@ -216,75 +223,34 @@ Sub-agents read this to determine the round number. They no longer count
 review files themselves — the orchestrator's write is authoritative. This
 removes a fragile counting-by-files dependency.
 
-## Skip-Unaffected-Reviewers Policy
-
-On revision rounds, before launching the reviewer batch, inspect the prior
-combined revision's `Modified files:` list to decide which reviewers belong
-in this round's parallel batch:
-
-- **The revision touched only user-facing flows (UI copy, styling, ARIA,
-  frontend behavior)** — the Architect's prior structural verdict is
-  preserved; you may skip the Architect. Run Design Critic and Evaluator.
-- **The revision touched only non-user-facing structure (data layer,
-  module boundaries, naming) with no overlap with user-facing flows** —
-  the Design Critic's prior verdict may still hold; you may skip the
-  Design Critic. Run Architect and Evaluator.
-- **The revision touched multiple layers** — run both reviewers
-  (concurrently) and then the Evaluator.
-
-The Security Prober is never skipped. It runs every round, before the
-Evaluator.
-
-Each reviewer agent also chooses delta vs. full mode internally based on the
-prior revision's `Modified files:` list. The orchestrator's skip policy is the
-outer cut; the agent's mode is the inner cut.
-
-State the skip decision in the orchestrator's status message when launching
-the batch. Conservative default: run every reviewer. Skip only when the
-file-list evidence is unambiguous.
-
 ## Adversarial Game Mechanics
 
-The pipeline is a minimax game over a single shared scalar. The Generator
-maximizes the **Acceptance Score**; the discriminator agents (Architect,
-Design Critic, Evaluator) minimize it by landing confirmed defects. The
-scalar, the gate precedence, the threshold ratchet, and the per-reviewer
-contributions are all defined in `pipeline-state/value-function.md` — the
-canonical reference, which agents consume rather than re-deriving.
+The Generator tries to pass the ship gate; the four reviewers try to land
+confirmed defects that fail it. `pipeline-state/ship-gate.md` defines the
+gate's pass conditions and the exact score-block schema. It is the
+human-readable mirror of `.claude/scripts/gate.py`, which is the source of
+truth; change both together.
 
-The arithmetic is computed by `.claude/scripts/score.py`, not by hand.
-Reviewers emit COUNTS in a fenced `score-block`; the orchestrator assembles
-them into one JSON payload and runs the script, which returns the
-deterministic Acceptance Score, the threshold check, and a ready-to-append
-history row. This keeps the headline number and the PASS-on-score gate
-deterministic rather than model-estimated.
-
-Gate precedence (from `value-function.md`): **(1)** Tier 1 failures are
-absolute — no score rescues them; **(2)** if Tier 1 passes, the
-Acceptance-Score ratchet (6.5 → 7.0 → 7.5) is the authoritative pass/fail;
-**(3)** the old standalone Tier-2≥7 rule is subsumed as the `Tier2Quality`
-component, not a parallel gate.
+Each reviewer emits one fenced `score-block` of counts and subscores, stamped
+with the commit it reviewed. `gate.py` reads the four reports directly,
+returns INVALID on a malformed block or a commit mismatch, and otherwise
+checks every pass condition against that one commit. Nothing is averaged,
+the floors never tighten between rounds, and nothing carries over. The gate
+also prints an `open_defect_load` statistic that never affects the result.
 
 State files that realize the game:
 
-- **`pipeline-state/value-function.md`** — canonical formula, gate
-  precedence, and the machine-readable `score-block` schema.
-- **`.claude/scripts/score.py`** — deterministic calculator; the only thing
-  that does the multiplication and summation.
-- **`pipeline-state/score-history.md`** — one row per round (per-reviewer
-  penalties + novelty + false-positive columns). Also the carry-forward
-  source of truth for skipped reviewers — read penalties from the prior row,
-  never from memory.
-- **`pipeline-state/scoreboard.md`** — one row per round, the
-  Generator-vs-Discriminator outcome.
+- **`pipeline-state/ship-gate.md`**: the pass conditions and the score-block
+  schema, in plain language.
+- **`.claude/scripts/gate.py`**: the deterministic gate, tested by
+  `.claude/scripts/tests/test_gate.py`.
 - **`pipeline-state/attack-library.md`** — sharded, cross-build probe
-  library. Reviewers load only their dimension's shard and add a novel probe
-  only when a genuinely new failure class surfaces (discovery-gated, not
-  mandatory — a quota of filler probes would dilute every future round).
+  library. Reviewers load only their dimension's shard and propose a probe
+  in their report only when a genuinely new failure class surfaces
+  (discovery-gated, not mandatory); the orchestrator alone appends (#13).
 
-The orchestrator's responsibilities #11–#14 above own the writes. Reviewers
-emit `score-block` counts and probe findings; the orchestrator runs the
-script and composes the round totals.
+Responsibilities #11 to #14 above own the gate run, the terminal files, and
+the library writes. Reviewers write only their own reports.
 
 ## Harvest-Back Protocol (Cross-Build Memory)
 
@@ -292,13 +258,14 @@ Each build runs in its own clone of this template, so nothing accumulates in
 the template by default. Three files are designed to compound across builds:
 `pipeline-state/attack-library.md` (discriminator probes),
 `pipeline-state/playbook.md` (Generator lessons), and
-`pipeline-state/build-ledger.md` (one summary row per build — the substrate
-for threshold recalibration). The harvest-back protocol returns a finished
+`pipeline-state/build-ledger.md` (one summary row per build, the substrate
+for gate calibration). The harvest-back protocol returns a finished
 build's deltas to the template as a reviewable PR.
 
 **When:** after `RETROSPECTIVE.md` is written and Responsibilities #13
 (attack-library harvesting) and #16 (playbook harvesting) have run in the
-clone. Harvest UNRECOVERABLE builds too.
+clone. Harvest UNRECOVERABLE builds too. Harvest a user-override build only
+when the user explicitly asks (Responsibility #14).
 
 **Steps** (the script does the git plumbing; the orchestrator does the
 content work between the two calls):
@@ -357,66 +324,64 @@ content work between the two calls):
    If either check in steps 1d or 2 fails, re-invoke that agent once and state the
    problem. If it fails again, write `ESCALATION_REQUESTED.md`.
 
-3. **Invoke the Generator sub-agent.**
-   It reads `planner_output.md`, builds the app into `output/`, and writes
-   `HANDOFF.md`, `BUILD_NOTES.md`, and `VERIFY_NOTES.md` to the project root
-   when done.
-
-   Write `pipeline-state/round.md` with `Current Round: 1` immediately before
-   the first reviewer cycle.
+3. **Start Round 1.** Write `pipeline-state/round.md` with `Current Round: 1`,
+   then invoke the Generator sub-agent for the initial build. It reads
+   `planner_output.md`, builds the app into `output/`, commits, and writes
+   `HANDOFF.md`, `BUILD_NOTES.md`, and `VERIFY_NOTES.md` to the project root.
 
    If `planner_output.md` contains a `<runtime_secrets>` section, confirm
    every listed environment variable is set before any reviewer starts the
    app. If one is missing, pause the build and ask the user to set it.
 
-4. **Invoke the Architect and Design Critic sub-agents concurrently.**
-   They are independent — launch both in parallel (subject to the
-   skip-unaffected-reviewers policy on revision rounds):
+4. **Review the commit.** When the round's Generator pass is complete, launch
+   two tracks in parallel:
 
-   - The **Architect** reads `planner_output.md`, `HANDOFF.md`, `BUILD_NOTES.md`,
-     and the source code in `output/`, and reviews the codebase for structural
-     quality across six dimensions (naming consistency, separation of concerns,
-     coupling, pattern coherence, scalability, security boundaries). It writes
-     `architecture_review_round_N.md` (always, regardless of verdict).
-   - The **Design Critic** reads `planner_output.md` and `HANDOFF.md`, starts
-     the app, and reviews it for usability and accessibility across ten
-     dimensions plus i18n probe, at three viewport sizes. It does **not** read
-     the Architect's review — the two run concurrently. It writes
-     `design_critique_round_N.md` (always, regardless of verdict).
+   a. The **Architect** reads `planner_output.md`, `HANDOFF.md`,
+      `BUILD_NOTES.md`, and the source code in `output/`, reviews structural
+      quality across six dimensions (naming consistency, separation of
+      concerns, coupling, pattern coherence, scalability, security
+      boundaries), and writes `architecture_review_round_N.md`. It never
+      starts the app.
+   b. The **live-app chain**, one agent after another, never in parallel.
+      Each agent starts the app, tests it, and stops it before writing its
+      report.
+      1. The **Design Critic** reviews usability and accessibility across
+         ten dimensions plus the i18n probe, at three viewport sizes, and
+         writes `design_critique_round_N.md`.
+      2. The **Security Prober** runs the built-in security probes and the
+         attack library's Security shard, and writes
+         `security_probe_round_N.md`.
+      3. The **Evaluator** tests functional correctness and spec compliance,
+         grades the Security Prober's results as its security baseline, and
+         writes `eval_report_round_N.md`. It runs no security probes.
 
-   When both have completed:
-   - **If either verdict is FAIL:** Re-invoke the Generator **once**, passing
-     the explicit path(s) of every failing report
-     (`architecture_review_round_N.md` and/or `design_critique_round_N.md`).
-     The Generator reads all provided reports and makes one **combined
-     revision pass**, then appends
-     `REVISION COMPLETE — Round N — [timestamp]` plus the `Modified files:`
-     and `Pattern Deviations:` lists to `pipeline-state/progress.md`.
-     Then proceed to Step 5.
-   - **If both PASS:** Proceed directly to Step 5.
+   Each reviewer reads `git -C output rev-parse --short=12 HEAD` before it
+   starts reviewing and records that value as `commit:` in its report's
+   score-block. Nothing commits to `output/` while reviewers run, so all four
+   reports describe the same commit.
 
-5. **Invoke the Security Prober, then the Evaluator.** Run them one after
-   the other, never in parallel.
+5. **Run the ship gate.** When all four reports exist, run:
 
-   a. The **Security Prober** reads `planner_output.md` and `HANDOFF.md`,
-      starts the app, runs the built-in security probes and the attack
-      library's Security shard, stops the app, and writes
-      `security_probe_round_N.md`.
-   b. The **Evaluator** reads `planner_output.md`, `HANDOFF.md`,
-      `VERIFY_NOTES.md`, `architecture_review_round_N.md`,
-      `design_critique_round_N.md`, and `security_probe_round_N.md`, starts
-      the app, and tests it for functional correctness and spec compliance.
-      It runs no security probes; it grades the Security Prober's results as
-      its security baseline.
-   - On FAIL: it writes `eval_report_round_N.md`. Increment N in
-     `pipeline-state/round.md`. Re-invoke the Generator, passing the explicit
-     path `eval_report_round_N.md`. The Generator must read that file before
-     beginning its revision. Repeat from Step 4 (launch the reviewer batch,
-     applying the skip-unaffected policy).
-   - On PASS: it writes `EVAL_PASS.md` and `RETROSPECTIVE.md`. Pipeline is
-     complete.
-   - After 5 failed rounds: Evaluator writes `EVAL_UNRECOVERABLE.md` and
-     `RETROSPECTIVE.md`. Stop.
+   ```
+   python3 .claude/scripts/gate.py N --tier <originality_tier from planner_output.md>
+   ```
+
+   - **Exit 0, PASS:** write `EVAL_PASS.md` (#12), then invoke the Evaluator with
+     `mode: retrospective` to write `RETROSPECTIVE.md`. Then run
+     attack-library harvesting (#13), playbook harvesting (#16), and
+     harvest-back (#17). The pipeline is complete.
+   - **Exit 1, FAIL, N < 5:** write `pipeline-state/round.md` with
+     `Current Round: N+1`. Invoke the Generator once, passing the explicit
+     path of every Round N report with open findings, for one combined
+     revision pass. When its `REVISION COMPLETE` record appears in
+     `pipeline-state/progress.md`, repeat from Step 4 for Round N+1.
+   - **Exit 1, FAIL, N = 5:** write `EVAL_UNRECOVERABLE.md` (#12), then run
+     the retrospective and harvest steps as on PASS. Stop.
+   - **Exit 2, INVALID:** the gate's output names the offending report.
+     Re-invoke that reviewer once for the same round, then rerun the gate.
+     If it is still INVALID, write `ESCALATION_REQUESTED.md`.
+
+   If the user accepts a build the gate failed, follow Responsibility #14.
 
 ## File Conventions
 | File | Written by | Read by |
@@ -427,18 +392,18 @@ content work between the two calls):
 | `HANDOFF.md` | Generator | Architect, Design Critic, Security Prober, Evaluator |
 | `BUILD_NOTES.md` | Generator | Architect, Evaluator |
 | `VERIFY_NOTES.md` | Generator | Evaluator |
-| `architecture_review_round_N.md` | Architect | Generator (combined revision), Evaluator |
-| `design_critique_round_N.md` | Design Critic | Generator (combined revision), Evaluator |
-| `security_probe_round_N.md` | Security Prober | Evaluator |
-| `eval_report_round_N.md` | Evaluator | Generator (next round) |
-| `EVAL_PASS.md` | Evaluator | Orchestrator |
-| `EVAL_UNRECOVERABLE.md` | Evaluator | Orchestrator |
-| `RETROSPECTIVE.md` | Evaluator | Orchestrator (surfaces to user) |
+| `architecture_review_round_N.md` | Architect | `gate.py`, Generator (next round) |
+| `design_critique_round_N.md` | Design Critic | `gate.py`, Evaluator, Generator (next round) |
+| `security_probe_round_N.md` | Security Prober | `gate.py`, Evaluator, Generator (next round) |
+| `eval_report_round_N.md` | Evaluator | `gate.py`, Generator (next round) |
+| `EVAL_PASS.md` | Orchestrator (from `gate.py` output, or a user override) | Evaluator (`mode: retrospective`), user |
+| `EVAL_UNRECOVERABLE.md` | Orchestrator (from `gate.py` output) | Evaluator (`mode: retrospective`), user |
+| `RETROSPECTIVE.md` | Evaluator (`mode: retrospective`) | Orchestrator (surfaces to user) |
 | `ESCALATION_REQUESTED.md` | Any agent | Orchestrator → User |
 | `CONFLICT.md` | Generator | Orchestrator → Evaluator (next round) |
 | `pipeline-state/round.md` | Orchestrator | All reviewer agents |
 | `pipeline-state/index.md` | Orchestrator | All agents (at-a-glance state) |
-| `pipeline-state/progress.md` | Generator (phase transitions + combined revisions, with Modified files lists) | Orchestrator, Architect, Design Critic |
+| `pipeline-state/progress.md` | Generator (phase transitions + one `REVISION COMPLETE` record per revision pass) | Orchestrator, Architect, Design Critic |
 | `pipeline-state/checkpoint.md` | Evaluator (round state) | Orchestrator |
 | `pipeline-state/architecture-checkpoint.md` | Architect (round state) | Orchestrator |
 | `pipeline-state/ux-checkpoint.md` | Design Critic (round state) | Orchestrator |
@@ -446,13 +411,11 @@ content work between the two calls):
 | `pipeline-state/session.md` | Generator (per-feature progress) | Orchestrator (resume) |
 | `pipeline-state/user-intervention.md` | Orchestrator (from "Pause build" or escalation answers) | Generator |
 | `pipeline-state/cost.md` | Orchestrator (per-round token usage) | Orchestrator |
-| `pipeline-state/value-function.md` | Template (canonical) | All reviewer agents, Generator |
-| `pipeline-state/score-history.md` | Orchestrator (per-round breakdown + carry-forward source) | Orchestrator, Generator |
-| `pipeline-state/scoreboard.md` | Orchestrator (per-round Generator-vs-Discriminator outcome) | Orchestrator, user |
-| `pipeline-state/attack-library.md` | Orchestrator (appends confirmed defects) + reviewer agents (append novel probes to their shard) | All reviewer agents (own shard only) |
+| `pipeline-state/ship-gate.md` | Template (mirror of `gate.py`) | Orchestrator, user |
+| `pipeline-state/attack-library.md` | Orchestrator only (appends reviewers' Proposed Probes after the build, #13) | Architect, Design Critic, Security Prober (own shard only) |
 | `pipeline-state/playbook.md` | Orchestrator (post-build lesson harvesting) | Generator only (never reviewers) |
-| `pipeline-state/build-ledger.md` | Orchestrator (one row per build, via harvest PR) | Orchestrator, user (threshold calibration) |
-| `.claude/scripts/score.py` | Template (canonical calculator) | Orchestrator (runs each round) |
+| `pipeline-state/build-ledger.md` | Orchestrator (one row per build, via harvest PR) | Orchestrator, user (gate calibration) |
+| `.claude/scripts/gate.py` | Template (canonical gate) | Orchestrator (runs each round) |
 | `.claude/scripts/harvest.sh` | Template (canonical plumbing) | Orchestrator (runs post-RETROSPECTIVE) |
 
 ## Format-Version Headers
@@ -474,9 +437,7 @@ check it and surface a clear error on mismatch rather than parsing garbage.
 | `EVAL_UNRECOVERABLE.md` | `eval-unrecoverable-v1` |
 | `RETROSPECTIVE.md` | `retrospective-v1` |
 | `ESCALATION_REQUESTED.md` | `escalation-v1` |
-| `pipeline-state/value-function.md` | `value-function-v2` |
-| `pipeline-state/score-history.md` | `score-history-v2` |
-| `pipeline-state/scoreboard.md` | `scoreboard-v1` |
+| `pipeline-state/ship-gate.md` | `ship-gate-v1` |
 | `pipeline-state/attack-library.md` | `attack-library-v2` |
 | `pipeline-state/playbook.md` | `playbook-v1` |
 | `pipeline-state/build-ledger.md` | `build-ledger-v1` |

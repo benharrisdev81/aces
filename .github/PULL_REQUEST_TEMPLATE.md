@@ -13,7 +13,7 @@
 - [ ] Sub-agent prompt change (`.claude/agents/`)
 - [ ] Orchestration / pipeline rules (`CLAUDE.md`)
 - [ ] Game mechanics / state schema (`pipeline-state/`)
-- [ ] Scorer (`.claude/scripts/score.py`)
+- [ ] Ship gate (`.claude/scripts/gate.py`, `pipeline-state/ship-gate.md`)
 - [ ] Documentation
 - [ ] Other (describe below)
 
@@ -22,5 +22,5 @@
 - [ ] My change is focused and consistent with the surrounding style.
 - [ ] If I changed a handoff file's structure, I bumped its `format-version:`
       and updated the table in `CLAUDE.md`.
-- [ ] If I changed `score.py`, it still runs and emits a valid history row.
+- [ ] If I changed `gate.py`, `ship-gate.md` matches and `test_gate.py` passes.
 - [ ] No secrets, tokens, or `.env` files are included in this PR.
