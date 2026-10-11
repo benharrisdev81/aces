@@ -12,6 +12,7 @@ Usage (run from the build clone's root):
     state.py round N                 start round N (also rewrites round.md)
     state.py step NAME [TASK ...]    enter a step; its tasks become `pending`
     state.py done TASK               move TASK from `pending` to `done`
+    state.py incr KEY                add 1 to a numeric key and print the result
 
 Exit codes: 0 = ok, 2 = usage error or missing key.
 """
@@ -94,6 +95,14 @@ def main(argv):
         state["pending"].remove(args[0])
         state["done"].append(args[0])
         save(state)
+    elif cmd == "incr" and len(args) == 1:
+        state = load()
+        if not isinstance(state.get(args[0]), int):
+            print(f"state.py: {args[0]!r} is not a number", file=sys.stderr)
+            return 2
+        state[args[0]] += 1
+        save(state)
+        print(state[args[0]])
     else:
         print(__doc__.strip(), file=sys.stderr)
         return 2

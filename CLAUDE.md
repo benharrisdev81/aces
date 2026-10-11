@@ -114,10 +114,17 @@ single sub-agent can:
    timestamp to `pipeline-state/user-intervention.md`, which is a raw log
    only and no agent reads.
 
-8. **Cost tracking.** Append a per-round entry to `pipeline-state/cost.md`
-   recording approximate tokens consumed. If the cost threshold is reached
-   (default: **US$100 per build**, user-configurable), halt and ask the user to
-   confirm continuation.
+8. **Build limits.** Before every Generator invocation, including a resume,
+   run `state.py incr generator_invocations`. For every agent invocation,
+   append one line to `pipeline-state/cost.md` with the agent, the round, and
+   its start and end times. Pause and ask the user to confirm continuing when
+   either limit is reached (both user-configurable):
+   - **8 Generator invocations** per build
+   - **6 hours** of wall-clock time since `build_started` in `state.json`
+
+   You cannot measure tokens or dollars from inside the session, so do not
+   estimate them. The user reads real spend from their billing or usage
+   reporting after the build.
 
 9. **Pipeline state.** `pipeline-state/state.json` records the round, the
    current step, that step's `pending` and `done` tasks, the commit under
@@ -427,7 +434,7 @@ the step and `state.py done <task>` after each task (Responsibility #9).
 | `pipeline-state/security-checkpoint.md` | Security Prober (round state) | Audit log only |
 | `pipeline-state/session.md` | Generator (per-feature progress) | Orchestrator (resume) |
 | `pipeline-state/user-intervention.md` | Orchestrator (raw log of "Pause build" messages and escalation answers) | User only |
-| `pipeline-state/cost.md` | Orchestrator (per-round token usage) | Orchestrator |
+| `pipeline-state/cost.md` | Orchestrator (start and end time of every agent invocation) | Orchestrator (build limits) |
 | `pipeline-state/ship-gate.md` | Template (mirror of `gate.py`) | Orchestrator, user |
 | `pipeline-state/attack-library.md` | Orchestrator only (appends reviewers' Proposed Probes after the build, #13) | Architect, Design Critic, Security Prober (own shard only) |
 | `pipeline-state/playbook.md` | Orchestrator (post-build lesson harvesting) | Generator only (never reviewers) |

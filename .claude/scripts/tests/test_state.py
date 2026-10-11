@@ -37,6 +37,9 @@ def main():
         checks.append(("step and done", state["pending"] == ["design_critic"] and state["done"] == ["architect"]))
         checks.append(("done on a non-pending task fails", run(root, "done", "evaluator")[0] == 2))
         checks.append(("unknown key fails", run(root, "get", "nope")[0] == 2))
+        run(root, "incr", "generator_invocations")
+        checks.append(("incr", run(root, "incr", "generator_invocations")[1].strip() == "2"))
+        checks.append(("incr on a non-number fails", run(root, "incr", "step")[0] == 2))
     failures = 0
     for name, ok in checks:
         failures += not ok
