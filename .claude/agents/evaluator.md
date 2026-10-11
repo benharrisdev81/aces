@@ -112,8 +112,8 @@ in, not a data dependency. Read all of them.
    You run no security probes yourself. Any probe it records as FAIL or
    NOT TESTED is a Tier 1 failure under Security baseline. List each one under
    Critical Failures with Severity `SECURITY` or `COVERAGE`, but do not count
-   them in your SCORE-BLOCK `tier1` or `not_tested`; the orchestrator takes
-   the Prober's own counts.
+   them in your SCORE-BLOCK `tier1` or `not_tested`; the ship gate reads the
+   Prober's own score-block, so counting them again would charge them twice.
 
 5. `design_critique_round_N.md`: the Design Critic's usability report on the
    same commit you are testing. Read it for context. You do not read the
