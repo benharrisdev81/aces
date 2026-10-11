@@ -112,9 +112,9 @@ data dependency:
 6. `pipeline-state/attack-library.md` — the cross-build adversarial probe
    library. Confirm `format-version: attack-library-v2`. It is sharded; load
    only the **Accessibility / UX** and **Failure Modes / Functional** shards.
-   Run every `active` probe in those shards in the live app. Skip `N/A`,
-   `RETIRED`, and `dormant` probes. Propose a new UX/accessibility probe
-   only when you discover a genuinely new failure class; see Active
+   Run every `active` probe in those shards in the live app. Skip `N/A` and
+   `RETIRED` probes, and probes listed by `python3 .claude/scripts/state.py get dormant`. Propose a
+   new UX/accessibility probe only when you discover a genuinely new failure class; see Active
    Adversarial Probing below.
 
 ### Step 3 — Confirm Browser Testing Tools

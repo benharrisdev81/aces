@@ -135,6 +135,10 @@ single sub-agent can:
    `python3 .claude/scripts/state.py`; never edit the JSON by hand. Before
    each Orchestration Step, run `state.py step <name> <task> ...` with the
    step's tasks; after each task succeeds, run `state.py done <task>`.
+   After each gate, add to `dormant` (with `state.py set dormant '[...]'`)
+   any probe its reviewer reported PASS in each of the last 3 rounds. When a
+   revision's `Source:` includes a reviewer's report, remove that reviewer's
+   probes from `dormant`, so they run again.
 
 10. **Retrospective.** After you write `EVAL_PASS.md` or
     `EVAL_UNRECOVERABLE.md`, invoke the Evaluator once with

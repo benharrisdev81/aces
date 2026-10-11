@@ -28,7 +28,7 @@ of their working sets preserves the adversarial game's independence.
   increment the existing entry's `Seen:` count.
 - An entry that proves wrong is deleted, not amended into mush.
 - Entries are ordered stable-first (oldest entries on top, never reordered)
-  so the prompt-cache prefix stays byte-stable across builds.
+  so every harvest is an append-only diff that is easy to review.
 
 ## Schema
 

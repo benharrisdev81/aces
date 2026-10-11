@@ -29,21 +29,21 @@ Within your shard, run every probe not marked `RETIRED` or `N/A` for this
 build's spec. A probe's `Dimension` field is authoritative for which shard it
 belongs to.
 
-## Ordering for prompt caching
+## Ordering
 
 Probes are ordered **stable-first**: seed probes and long-lived probes appear
 at the top of each shard and are never reordered; newly acquired probes are
-appended at the bottom of their shard. Keeping the high-frequency prefix
-byte-stable lets the harness reuse the prompt cache across rounds and builds.
+appended at the bottom of their shard. A stable order keeps every harvest an
+append-only diff that is easy to review (`harvest.sh` enforces it).
 Do not reorder or rewrite existing probes — append only.
 
 ## Retirement and dedup policy
 
 "Append-only" is not "grow forever":
 
-- A probe a build has **passed 3 consecutive rounds** may be marked
-  `Status: dormant` for the remainder of that build — still listed, not
-  re-run every round — and reactivated on any related revision.
+- A probe a build has **passed 3 consecutive rounds** may be skipped for
+  the rest of that build. That is per-build state, so it lives in the build's
+  `pipeline-state/state.json` (`dormant`), never in this file.
 - A probe that **duplicates** an existing one (same defect signature) is not
   added; instead increment the existing probe's `Seen:` count.
 - A probe superseded by a stricter probe is marked `RETIRED` with a pointer
@@ -60,7 +60,7 @@ Do not reorder or rewrite existing probes — append only.
 - **Source**: <which reviewer landed it the first time>
 - **Dimension**: <Security | Failure Modes | Accessibility | Structural | Naming | Coupling | Spec Compliance | ...>
 - **Shard**: <Security | Failure Modes/Functional | Accessibility/UX | Structural>
-- **Status**: <active | dormant | RETIRED→probe-slug>
+- **Status**: <active | RETIRED→probe-slug>
 - **Seen**: <count of builds where this defect class has appeared>
 - **Probe**: <how a reviewer reproduces this test>
 - **What it looks for**: <the defect signature>
