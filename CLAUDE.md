@@ -1,14 +1,17 @@
 # Autonomous Build Pipeline
 
 ## Pipeline Overview
-Seven sub-agents: Clarifier → Planner → Generator → (Architect ∥ Design Critic) → Security Prober → Evaluator.
-After each Generator build (or revision), the Architect (structural quality) and the Design
-Critic (usability) review **concurrently** — they are independent: the Architect reads only
-the code, the Design Critic uses only the live app. If either lands findings, the Generator
-makes a **single combined revision pass** addressing both reports. Then the Security Prober
-runs the security probes, and after it the Evaluator runs functional tests. The Evaluator
-can trigger Generator re-runs up to 5 rounds. A Fable build that fails 5 consecutive rounds
-almost certainly has a spec problem (escalation territory), not a generation problem.
+Seven sub-agents: Clarifier → Planner → Generator → (Architect ∥ Design Critic → Security Prober → Evaluator).
+Each round starts with one Generator pass (the initial build, or one combined revision) that
+commits to `output/`. Every reviewer then reviews that same commit. The Architect reads only
+the code and runs in parallel with the **live-app chain**: the Design Critic, then the Security
+Prober, then the Evaluator, one after another, each starting and stopping its own app
+instance. Every report records the commit it reviewed. The orchestrator then runs
+`.claude/scripts/gate.py`, which alone decides PASS or FAIL from the four reports. On FAIL,
+the next round's Generator pass addresses every report with open findings. The cap is 5
+rounds, and Round 5 is reviewed and gated like any other. A Fable build that fails 5
+consecutive rounds almost certainly has a spec problem (escalation territory), not a
+generation problem.
 
 The pipeline is structured as an **adversarial minimax game**: the Generator
 maximizes a shared scalar (the Acceptance Score, defined in
@@ -72,8 +75,8 @@ single sub-agent can:
 
 1. **Round state.** Maintain `pipeline-state/round.md` as the single source of
    truth for the current round number; sub-agents read it instead of counting
-   files. Update it at the start of every reviewer cycle (parallel Architect +
-   Design Critic, then Evaluator). See "Round state file" below.
+   files. Update it at the start of every round, before the Generator pass.
+   See "Round state file" below.
 
 2. **One build per clone.** Each build runs in its own clone, so build state
    lives in the project root and directly in `pipeline-state/`. Do not create
@@ -112,18 +115,13 @@ single sub-agent can:
 10. **Retrospective.** The Evaluator writes `RETROSPECTIVE.md` on PASS or
     UNRECOVERABLE. Surface it to the user when the pipeline halts.
 
-11. **Acceptance Score bookkeeping (computed, never hand-totaled).** After
-    each Evaluator verdict, collect the `score-block` from each reviewer
-    report, read any carried penalties from the prior `score-history.md` row
-    (for reviewers skipped this round), assemble the JSON payload documented
-    in `.claude/scripts/score.py`, and run that script. Paste its emitted row
-    under the table in `pipeline-state/score-history.md` and put the headline
-    Acceptance Score into `pipeline-state/index.md`. Do not compute the
-    scalar yourself — the script is the deterministic source of truth.
-    **Interim, until the gate rewrite:** the Evaluator runs no security
-    probes. Before running the script, set the payload's
-    `evaluator.security_fail` to the Security Prober's `security_fail`, and
-    add the Prober's `not_tested` to `evaluator.not_tested`.
+11. **Ship gate (computed, never judged).** When all four reports for round
+    N exist, run `python3 .claude/scripts/gate.py N --tier <tier>`, taking
+    `<tier>` from the `<originality_tier>` section of `planner_output.md`.
+    The script reads the reports' score-blocks itself; its exit code alone
+    decides the round (see Orchestration Step 5). Put its `Round N:` result
+    line into `pipeline-state/index.md`. Never decide PASS or FAIL yourself,
+    and never edit a report's score-block.
 
 12. **Scoreboard.** After each Evaluator verdict, append one row to
     `pipeline-state/scoreboard.md` classifying the round as Generator WIN
@@ -189,13 +187,12 @@ When invoked with "Resume build":
 9. Determine re-entry point (check in this order):
    - If `ESCALATION_REQUESTED.md` exists and is unanswered: surface the question to the user; pause.
    - If `CONFLICT.md` exists and is unresolved: surface to the user; pause.
-   - If Evaluator has a round IN PROGRESS: re-invoke the Evaluator.
-   - If the Security Prober has a round IN PROGRESS: re-invoke the Security Prober.
-   - If the Architect or Design Critic has a round IN PROGRESS: re-invoke whichever is in progress (they run concurrently; re-launch both in parallel if both are mid-round).
-   - If one reviewer completed round N but the other never started (and is not skipped under the skip-unaffected policy): invoke the missing reviewer.
-   - If either reviewer issued FAIL for round N but `REVISION COMPLETE — Round N` is absent from progress.md: re-invoke the Generator once, passing the path(s) of every failing report (`architecture_review_round_N.md` and/or `design_critique_round_N.md`) for a single combined revision pass.
-   - If both reviewers completed round N (PASS, or FAIL with the combined revision logged) but `security_probe_round_N.md` does not exist: invoke the Security Prober.
-   - If `security_probe_round_N.md` exists but the Evaluator has not yet run for that round: re-invoke the Evaluator.
+   - If round.md shows Round N > 1 and progress.md has no `REVISION COMPLETE` record for Round N: re-invoke the Generator for the combined revision, passing every Round N-1 report with open findings.
+   - The remaining reviewer branches apply only once the round's Generator pass is complete (`HANDOFF COMPLETE` for Round 1, the `REVISION COMPLETE` record for Round N > 1):
+     - If any reviewer has round N IN PROGRESS in its checkpoint file: re-invoke it. If it belongs to the live-app chain, continue the chain after it.
+     - If `architecture_review_round_N.md` is missing: invoke the Architect.
+     - If any live-app chain report for round N is missing (`design_critique_round_N.md`, `security_probe_round_N.md`, `eval_report_round_N.md`): invoke the first missing agent in chain order (Design Critic, Security Prober, Evaluator) and continue the chain from there. This can run in parallel with the Architect branch above.
+     - If all four round N reports exist and neither `EVAL_PASS.md` nor `EVAL_UNRECOVERABLE.md` exists: run the gate (Orchestration Step 5). The gate is deterministic, so re-running it is safe.
    - If Generator is mid-phase (session.md shows incomplete phase): re-invoke the Generator, instructing it to read `pipeline-state/session.md` and continue from the last completed feature.
    - If a phase boundary was the last log entry in progress.md (HANDOFF COMPLETE not present): re-invoke the Generator at the next phase.
    - If only Planner has completed (planner_output.md is populated, progress.md is empty): re-invoke the Generator from Phase 1.
@@ -204,8 +201,8 @@ When invoked with "Resume build":
 
 ## Round State File
 
-At the start of every reviewer cycle (each fresh parallel Architect + Design
-Critic launch), write `pipeline-state/round.md`:
+At the start of every round, before that round's Generator pass, write
+`pipeline-state/round.md`:
 
 ```
 Current Round: N
@@ -357,66 +354,62 @@ content work between the two calls):
    If either check in steps 1d or 2 fails, re-invoke that agent once and state the
    problem. If it fails again, write `ESCALATION_REQUESTED.md`.
 
-3. **Invoke the Generator sub-agent.**
-   It reads `planner_output.md`, builds the app into `output/`, and writes
-   `HANDOFF.md`, `BUILD_NOTES.md`, and `VERIFY_NOTES.md` to the project root
-   when done.
-
-   Write `pipeline-state/round.md` with `Current Round: 1` immediately before
-   the first reviewer cycle.
+3. **Start Round 1.** Write `pipeline-state/round.md` with `Current Round: 1`,
+   then invoke the Generator sub-agent for the initial build. It reads
+   `planner_output.md`, builds the app into `output/`, commits, and writes
+   `HANDOFF.md`, `BUILD_NOTES.md`, and `VERIFY_NOTES.md` to the project root.
 
    If `planner_output.md` contains a `<runtime_secrets>` section, confirm
    every listed environment variable is set before any reviewer starts the
    app. If one is missing, pause the build and ask the user to set it.
 
-4. **Invoke the Architect and Design Critic sub-agents concurrently.**
-   They are independent — launch both in parallel (subject to the
-   skip-unaffected-reviewers policy on revision rounds):
+4. **Review the commit.** When the round's Generator pass is complete, launch
+   two tracks in parallel:
 
-   - The **Architect** reads `planner_output.md`, `HANDOFF.md`, `BUILD_NOTES.md`,
-     and the source code in `output/`, and reviews the codebase for structural
-     quality across six dimensions (naming consistency, separation of concerns,
-     coupling, pattern coherence, scalability, security boundaries). It writes
-     `architecture_review_round_N.md` (always, regardless of verdict).
-   - The **Design Critic** reads `planner_output.md` and `HANDOFF.md`, starts
-     the app, and reviews it for usability and accessibility across ten
-     dimensions plus i18n probe, at three viewport sizes. It does **not** read
-     the Architect's review — the two run concurrently. It writes
-     `design_critique_round_N.md` (always, regardless of verdict).
+   a. The **Architect** reads `planner_output.md`, `HANDOFF.md`,
+      `BUILD_NOTES.md`, and the source code in `output/`, reviews structural
+      quality across six dimensions (naming consistency, separation of
+      concerns, coupling, pattern coherence, scalability, security
+      boundaries), and writes `architecture_review_round_N.md`. It never
+      starts the app.
+   b. The **live-app chain**, one agent after another, never in parallel.
+      Each agent starts the app, tests it, and stops it before writing its
+      report.
+      1. The **Design Critic** reviews usability and accessibility across
+         ten dimensions plus the i18n probe, at three viewport sizes, and
+         writes `design_critique_round_N.md`.
+      2. The **Security Prober** runs the built-in security probes and the
+         attack library's Security shard, and writes
+         `security_probe_round_N.md`.
+      3. The **Evaluator** tests functional correctness and spec compliance,
+         grades the Security Prober's results as its security baseline, and
+         writes `eval_report_round_N.md`. It runs no security probes.
 
-   When both have completed:
-   - **If either verdict is FAIL:** Re-invoke the Generator **once**, passing
-     the explicit path(s) of every failing report
-     (`architecture_review_round_N.md` and/or `design_critique_round_N.md`).
-     The Generator reads all provided reports and makes one **combined
-     revision pass**, then appends
-     `REVISION COMPLETE — Round N — [timestamp]` plus the `Modified files:`
-     and `Pattern Deviations:` lists to `pipeline-state/progress.md`.
-     Then proceed to Step 5.
-   - **If both PASS:** Proceed directly to Step 5.
+   Each reviewer reads `git -C output rev-parse --short=12 HEAD` before it
+   starts reviewing and records that value as `commit:` in its report's
+   score-block. Nothing commits to `output/` while reviewers run, so all four
+   reports describe the same commit.
 
-5. **Invoke the Security Prober, then the Evaluator.** Run them one after
-   the other, never in parallel.
+5. **Run the ship gate.** When all four reports exist, run:
 
-   a. The **Security Prober** reads `planner_output.md` and `HANDOFF.md`,
-      starts the app, runs the built-in security probes and the attack
-      library's Security shard, stops the app, and writes
-      `security_probe_round_N.md`.
-   b. The **Evaluator** reads `planner_output.md`, `HANDOFF.md`,
-      `VERIFY_NOTES.md`, `architecture_review_round_N.md`,
-      `design_critique_round_N.md`, and `security_probe_round_N.md`, starts
-      the app, and tests it for functional correctness and spec compliance.
-      It runs no security probes; it grades the Security Prober's results as
-      its security baseline.
-   - On FAIL: it writes `eval_report_round_N.md`. Increment N in
-     `pipeline-state/round.md`. Re-invoke the Generator, passing the explicit
-     path `eval_report_round_N.md`. The Generator must read that file before
-     beginning its revision. Repeat from Step 4 (launch the reviewer batch,
-     applying the skip-unaffected policy).
-   - On PASS: it writes `EVAL_PASS.md` and `RETROSPECTIVE.md`. Pipeline is
-     complete.
-   - After 5 failed rounds: Evaluator writes `EVAL_UNRECOVERABLE.md` and
-     `RETROSPECTIVE.md`. Stop.
+   ```
+   python3 .claude/scripts/gate.py N --tier <originality_tier from planner_output.md>
+   ```
+
+   - **Exit 0, PASS:** write `EVAL_PASS.md`, then invoke the Evaluator with
+     `mode: retrospective` to write `RETROSPECTIVE.md`. Then run
+     attack-library harvesting (#13), playbook harvesting (#16), and
+     harvest-back (#17). The pipeline is complete.
+   - **Exit 1, FAIL, N < 5:** write `pipeline-state/round.md` with
+     `Current Round: N+1`. Invoke the Generator once, passing the explicit
+     path of every Round N report with open findings, for one combined
+     revision pass. When its `REVISION COMPLETE` record appears in
+     `pipeline-state/progress.md`, repeat from Step 4 for Round N+1.
+   - **Exit 1, FAIL, N = 5:** write `EVAL_UNRECOVERABLE.md`, then run the
+     retrospective and harvest steps as on PASS. Stop.
+   - **Exit 2, INVALID:** the gate's output names the offending report.
+     Re-invoke that reviewer once for the same round, then rerun the gate.
+     If it is still INVALID, write `ESCALATION_REQUESTED.md`.
 
 ## File Conventions
 | File | Written by | Read by |
@@ -427,10 +420,10 @@ content work between the two calls):
 | `HANDOFF.md` | Generator | Architect, Design Critic, Security Prober, Evaluator |
 | `BUILD_NOTES.md` | Generator | Architect, Evaluator |
 | `VERIFY_NOTES.md` | Generator | Evaluator |
-| `architecture_review_round_N.md` | Architect | Generator (combined revision), Evaluator |
-| `design_critique_round_N.md` | Design Critic | Generator (combined revision), Evaluator |
-| `security_probe_round_N.md` | Security Prober | Evaluator |
-| `eval_report_round_N.md` | Evaluator | Generator (next round) |
+| `architecture_review_round_N.md` | Architect | `gate.py`, Generator (next round) |
+| `design_critique_round_N.md` | Design Critic | `gate.py`, Evaluator, Generator (next round) |
+| `security_probe_round_N.md` | Security Prober | `gate.py`, Evaluator, Generator (next round) |
+| `eval_report_round_N.md` | Evaluator | `gate.py`, Generator (next round) |
 | `EVAL_PASS.md` | Evaluator | Orchestrator |
 | `EVAL_UNRECOVERABLE.md` | Evaluator | Orchestrator |
 | `RETROSPECTIVE.md` | Evaluator | Orchestrator (surfaces to user) |

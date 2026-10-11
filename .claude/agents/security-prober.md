@@ -47,6 +47,10 @@ Announce your round number at the start of your output:
 Append to `pipeline-state/security-checkpoint.md` (create it if absent):
   Round [N] | IN PROGRESS | [timestamp]
 
+Record the commit under review: run `git -C output rev-parse --short=12 HEAD`
+now, before you begin reviewing, and use that value as `commit:` in your
+score-block. Every reviewer in the round reviews this same commit.
+
 ### Step 2: Read Context Files
 
 1. `planner_output.md`: confirm `format-version: planner-v1`. Note whether the
@@ -146,6 +150,7 @@ applicable probes you could not run. N/A probes count toward neither.
 
 ```score-block
 reviewer: security_prober
+commit: [12-char SHA from Step 1]
 security_fail: [N]
 not_tested: [N]
 ```
