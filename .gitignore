@@ -19,3 +19,6 @@ __pycache__/
 
 # Harvest-back worktree (transient; see .claude/scripts/harvest.sh)
 .harvest/
+
+# Playwright MCP screenshots and console logs (written to the session's working directory)
+.playwright-mcp/
