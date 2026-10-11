@@ -88,8 +88,8 @@ Before writing a single line of code, complete this startup sequence in order:
    work through using the structure in Directive 3. This is your session map.
 
 7. **Initialize the build's git history.** If `output/` is not yet a git
-   repository, run `git init` inside it. The orchestrator will commit on your
-   behalf at every phase transition and revision pass (see Directive 11).
+   repository, run `git init` inside it. You make every commit yourself
+   (Directive 11).
 
 ---
 
@@ -446,8 +446,9 @@ when the record is written.
 
 ### 11. Per-Phase Git Commits
 
-The build's `output/` directory is a git repository (Directive 7 initializes it
-if not already present).
+The build's `output/` directory is a git repository (Session Startup step 7
+initializes it if not already present). You make every commit; nobody else
+commits for you.
 
 - At every phase transition, commit the work so far with the message:
     `phase: complete <PhaseName> (round <N>)`
