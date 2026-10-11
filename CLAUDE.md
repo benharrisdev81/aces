@@ -16,9 +16,8 @@ generation problem.
 The pipeline is structured as an **adversarial minimax game**: the Generator
 maximizes a shared scalar (the Acceptance Score, defined in
 `pipeline-state/value-function.md`); the Architect, Design Critic, and
-Evaluator collectively minimize it by landing confirmed defects. Per-round
-outcomes are recorded as Generator-vs-Discriminator results in
-`pipeline-state/scoreboard.md`, and confirmed defects are harvested into
+Evaluator collectively minimize it by landing confirmed defects. Confirmed
+defects are harvested into
 `pipeline-state/attack-library.md` so the discriminators' test surface
 grows monotonically across rounds and across builds. See "Adversarial
 Game Mechanics" below.
@@ -123,12 +122,8 @@ single sub-agent can:
     line into `pipeline-state/index.md`. Never decide PASS or FAIL yourself,
     and never edit a report's score-block.
 
-12. **Scoreboard.** After each Evaluator verdict, append one row to
-    `pipeline-state/scoreboard.md` classifying the round as Generator WIN
-    (all reviewers PASS on first contact and score ≥ threshold),
-    or Discriminator WIN (any reviewer landed a finding forcing a revision).
-    The flaw-landed column names the highest-severity finding landed (or
-    `none` on a Generator WIN).
+12. **(Retired.)** The scoreboard was removed. The number is kept so that
+    references to later responsibilities stay valid.
 
 13. **Attack-library harvesting.** On any reviewer FAIL, once the finding is
     confirmed real (not withdrawn via `CONFLICT.md` adjudication), distill it
@@ -137,13 +132,8 @@ single sub-agent can:
     append-only/dedup/retirement policy. The library persists across builds
     via the harvest-back protocol (Responsibility #17).
 
-14. **False-positive accounting (honest auditor).** When `CONFLICT.md`
-    adjudication (or a subsequent Evaluator round) withdraws a finding a
-    reviewer raised, record it in that reviewer's `fp_withdrawn` count for the
-    round the withdrawal is confirmed, so the `FalsePositivePenalty` is
-    attributed to the reviewer that raised it. This is the counterweight that
-    keeps the adversarial framing from rewarding spurious findings — a
-    reviewer that over-reports loses score just as the Generator does.
+14. **(Retired.)** False-positive accounting was removed. The number is
+    kept so that references to later responsibilities stay valid.
 
 15. **Missing reports.** If a subagent returns no report file, re-invoke it
     once with `model: opus`; if that also fails, write
@@ -268,12 +258,6 @@ State files that realize the game:
   precedence, and the machine-readable `score-block` schema.
 - **`.claude/scripts/score.py`** — deterministic calculator; the only thing
   that does the multiplication and summation.
-- **`pipeline-state/score-history.md`** — one row per round (per-reviewer
-  penalties + novelty + false-positive columns). Also the carry-forward
-  source of truth for skipped reviewers — read penalties from the prior row,
-  never from memory.
-- **`pipeline-state/scoreboard.md`** — one row per round, the
-  Generator-vs-Discriminator outcome.
 - **`pipeline-state/attack-library.md`** — sharded, cross-build probe
   library. Reviewers load only their dimension's shard and add a novel probe
   only when a genuinely new failure class surfaces (discovery-gated, not
@@ -440,8 +424,6 @@ content work between the two calls):
 | `pipeline-state/user-intervention.md` | Orchestrator (from "Pause build" or escalation answers) | Generator |
 | `pipeline-state/cost.md` | Orchestrator (per-round token usage) | Orchestrator |
 | `pipeline-state/value-function.md` | Template (canonical) | All reviewer agents, Generator |
-| `pipeline-state/score-history.md` | Orchestrator (per-round breakdown + carry-forward source) | Orchestrator, Generator |
-| `pipeline-state/scoreboard.md` | Orchestrator (per-round Generator-vs-Discriminator outcome) | Orchestrator, user |
 | `pipeline-state/attack-library.md` | Orchestrator (appends confirmed defects) + reviewer agents (append novel probes to their shard) | All reviewer agents (own shard only) |
 | `pipeline-state/playbook.md` | Orchestrator (post-build lesson harvesting) | Generator only (never reviewers) |
 | `pipeline-state/build-ledger.md` | Orchestrator (one row per build, via harvest PR) | Orchestrator, user (threshold calibration) |
@@ -468,8 +450,6 @@ check it and surface a clear error on mismatch rather than parsing garbage.
 | `RETROSPECTIVE.md` | `retrospective-v1` |
 | `ESCALATION_REQUESTED.md` | `escalation-v1` |
 | `pipeline-state/value-function.md` | `value-function-v2` |
-| `pipeline-state/score-history.md` | `score-history-v2` |
-| `pipeline-state/scoreboard.md` | `scoreboard-v1` |
 | `pipeline-state/attack-library.md` | `attack-library-v2` |
 | `pipeline-state/playbook.md` | `playbook-v1` |
 | `pipeline-state/build-ledger.md` | `build-ledger-v1` |

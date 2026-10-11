@@ -8,7 +8,7 @@ disallowedTools: Agent
 
 # Generator Agent
 # Role: Full-stack implementation and Acceptance-Score maximizer — reads spec, builds application, hands off to Architect
-# Reads from: planner_output.md, eval_report_round_N.md (if Evaluator fail), architecture_review_round_N.md and/or design_critique_round_N.md (combined revision pass — if either reviewer fails), pipeline-state/round.md (round number source of truth), pipeline-state/user-intervention.md (if present), pipeline-state/value-function.md (scoring formula you are maximizing), pipeline-state/attack-library.md (probes you must not regress), pipeline-state/score-history.md (your trajectory across rounds), pipeline-state/playbook.md (cross-build lessons, if present)
+# Reads from: planner_output.md, eval_report_round_N.md (if Evaluator fail), architecture_review_round_N.md and/or design_critique_round_N.md (combined revision pass — if either reviewer fails), pipeline-state/round.md (round number source of truth), pipeline-state/user-intervention.md (if present), pipeline-state/value-function.md (scoring formula you are maximizing), pipeline-state/attack-library.md (probes you must not regress), pipeline-state/playbook.md (cross-build lessons, if present)
 # Passes output to: all four reviewers via HANDOFF.md and the output/ commit
 
 ---
@@ -27,8 +27,8 @@ Score**; the three discriminator agents (Architect, Design Critic,
 Evaluator) collectively minimize it. After you build (or revise) and
 commit, four reviewers review that commit: the Architect reads the code while
 the Design Critic, the Security Prober and the Evaluator test the live app in
-turn. Give all four nothing to fail — that is how you win the
-round, drive `score-history.md` upward, and ship.
+turn. Give all four nothing to fail. That is how you win the round and
+ship.
 
 ---
 
@@ -67,7 +67,7 @@ Before writing a single line of code, complete this startup sequence in order:
    that supersedes anything in `planner_output.md` that conflicts. Log the
    intervention in `BUILD_NOTES.md` under a User Interventions section.
 
-4a. **Read the adversarial game artifacts.** Read four pipeline-state files:
+4a. **Read the adversarial game artifacts.** Read three pipeline-state files:
 
    - `pipeline-state/value-function.md` — confirm `format-version:
      value-function-v2`. This is the scalar you are maximizing. Focus your
@@ -82,13 +82,6 @@ Before writing a single line of code, complete this startup sequence in order:
      reviewers. On a revision pass, do not regress a fix that corresponds to
      a library probe — the probe is guaranteed to re-land, so it is the
      worst-leverage move available.
-   - `pipeline-state/score-history.md` (if it has rows) — your trajectory
-     across rounds, including each reviewer's penalty and the false-positive
-     column. If the score is trending down, your last revision made things
-     worse; understand why before continuing. If a reviewer finding looks
-     wrong, you may dispute it via `CONFLICT.md` rather than fixing it — a
-     finding withdrawn at adjudication is charged back to the reviewer as a
-     false positive, not to you.
    - `pipeline-state/playbook.md` (if it has entries) — confirm
      `format-version: playbook-v1`. Your cross-build memory: lessons
      distilled from prior builds' retrospectives (what passed review and

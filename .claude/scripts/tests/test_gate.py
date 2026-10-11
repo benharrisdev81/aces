@@ -57,7 +57,7 @@ CASES = [
     ("security probe not tested", {"overrides": {"security_probe_round_3.md": {"not_tested": 1}}}, [], 1),
     ("evaluator tier1 failure", {"overrides": {"eval_report_round_3.md": {"tier1": 1}}}, [], 1),
     ("craft below floor", {"overrides": {"eval_report_round_3.md": {"craft": 6}}}, [], 1),
-    ("unknown key", {"extra_line": ("design_critique_round_3.md", "novel_landed: 0")}, [], 2),
+    ("unknown key", {"extra_line": ("design_critique_round_3.md", "verdict: PASS")}, [], 2),
     ("out of range subscore", {"overrides": {"eval_report_round_3.md": {"craft": 15}}}, [], 2),
     ("negative count", {"overrides": {"architecture_review_round_3.md": {"min": -1}}}, [], 2),
     ("missing security report", {"drop": "security_probe_round_3.md"}, [], 2),

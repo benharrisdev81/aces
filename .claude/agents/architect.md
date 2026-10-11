@@ -122,9 +122,7 @@ data dependency:
    Confirm `format-version: value-function-v2`. You emit COUNTS (crit/mod/min)
    in a machine-readable SCORE-BLOCK; the orchestrator runs
    `.claude/scripts/score.py` to turn them into `ArchitectPenalty`. Do not
-   multiply the weights by hand. If a prior-round finding of yours was
-   withdrawn through `CONFLICT.md` adjudication, record it as `fp_withdrawn`
-   — the false-positive term keeps your precision honest.
+   multiply the weights by hand.
 
 7. `pipeline-state/attack-library.md` — the cross-build adversarial probe
    library. Confirm `format-version: attack-library-v2`. It is sharded; load
@@ -365,9 +363,7 @@ might not surface on a literal reading:
 genuinely new structural failure class, add it to the Structural shard of
 `pipeline-state/attack-library.md` using the schema there. Adding none is
 correct for a round where nothing new surfaced — do not manufacture filler
-to hit a quota; it dilutes every future review. If a novel probe you added
-lands a confirmed finding, record it as `novel_landed` in your SCORE-BLOCK
-— it contributes `NoveltyDefectPenalty`.
+to hit a quota; it dilutes every future review.
 
 Findings discovered through adversarial probing are first-class — file
 them at the appropriate severity in the standard Findings sections below.
@@ -532,7 +528,7 @@ specific findings. Examples:
 ## Novel Probes Added This Round
 [Only if a genuinely new structural failure class surfaced (discovery-gated).
 List probe ID(s) and a one-line summary each, or "None — nothing new
-surfaced." Mark a landing `LANDED` and cross-reference the finding ID above.]
+surfaced."]
 
 ## SCORE-BLOCK
 [Emit COUNTS, not products. The orchestrator runs `.claude/scripts/score.py`
@@ -544,8 +540,6 @@ commit: [12-char SHA from Step 1]
 crit: [N]
 mod: [N]
 min: [N]
-novel_landed: [N]
-fp_withdrawn: [N]
 skipped: false
 ```
 

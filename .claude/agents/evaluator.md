@@ -127,11 +127,6 @@ in, not a data dependency. Read all of them.
    build's spec. Probes marked `N/A`, `RETIRED`, or `dormant` are skipped. Accessibility and structural shards
    belong to the other reviewers; do not run them.
 
-   If `eval_report_round_N-1.md` shows a finding you raised last round was
-   withdrawn through `CONFLICT.md` adjudication or shown not to reproduce,
-   record it as `fp_withdrawn` in your SCORE-BLOCK — the false-positive term
-   keeps your own precision honest (see `value-function.md`).
-
 **AI scope check**: If `planner_output.md` contains no `<integrated_ai_capabilities>`
 section, the product has no AI features. Skip every AI-related check, and do not treat
 the absence of AI as a failure.
@@ -255,10 +250,7 @@ surfaces a genuinely new failure class, add it to the appropriate shard of
 `pipeline-state/attack-library.md` using the schema there. Adding zero probes
 is the correct outcome for a round where nothing new surfaced — do not
 manufacture filler to hit a quota; a library full of low-value probes
-dilutes every future round. Quality gates this, not a counter. If a novel
-probe you added this round lands a confirmed flaw, record it as
-`novel_landed` in your SCORE-BLOCK — it contributes `NoveltyDefectPenalty`,
-rewarding real discovery.
+dilutes every future round. Quality gates this, not a counter.
 
 Successful breaks here are first-class findings — file them at the
 appropriate Tier and severity, exactly like coverage failures. A break
@@ -452,8 +444,7 @@ Structured table — one row per prior CRITICAL/MODERATE finding:
 ## Novel Probes Added This Round
 [Only if a genuinely new failure class surfaced (discovery-gated — see
 Directive 6). List the probe ID(s) you appended and a one-line summary of
-each, or write "None — nothing new surfaced." If a novel probe landed a
-confirmed flaw, mark it `LANDED` and cross-reference the finding ID above.]
+each, or write "None — nothing new surfaced."]
 
 ## SCORE-BLOCK
 [Emit COUNTS, not products. The orchestrator pipes this to
@@ -468,8 +459,6 @@ not_tested: [N]
 originality: [0-10]
 design: [0-10]
 craft: [0-10]
-novel_landed: [N]
-fp_withdrawn: [N]
 ```
 
 ## Priority Order for Generator
@@ -526,8 +515,6 @@ not_tested: 0
 originality: [0-10]
 design: [0-10]
 craft: [0-10]
-novel_landed: [N]
-fp_withdrawn: [N]
 ```
 
 ## Acceptance Score — Round [N]
