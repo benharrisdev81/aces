@@ -115,9 +115,9 @@ data dependency:
    library. Confirm `format-version: attack-library-v2`. It is sharded; load
    only the **Accessibility / UX** and **Failure Modes / Functional** shards.
    Run every `active` probe in those shards in the live app. Skip `N/A`,
-   `RETIRED`, and `dormant` probes. Add a novel UX/accessibility probe only
-   when you discover a genuinely new failure class — see Active Adversarial
-   Probing below.
+   `RETIRED`, and `dormant` probes. Propose a new UX/accessibility probe
+   only when you discover a genuinely new failure class; see Active
+   Adversarial Probing below.
 
 ### Step 3 — Confirm Browser Testing Tools
 
@@ -338,10 +338,12 @@ not flag on a literal pass:
   finding — flag it as such.
 
 **Novel-probe quota (discovery-gated, not mandatory).** When you discover a
-genuinely new UX/accessibility failure class, add it to the Accessibility / UX
-shard of `pipeline-state/attack-library.md` using the schema there. Adding
-none is correct for a round where nothing new surfaced — do not manufacture
-filler to hit a quota; it dilutes every future review.
+genuinely new UX/accessibility failure class, propose a probe for it in your
+report's Proposed Probes section. Proposing none is correct for a round where
+nothing new surfaced — do not manufacture filler to hit a quota; it dilutes
+every future review. Never edit `pipeline-state/attack-library.md` yourself:
+the orchestrator is its only writer, and it dedups and appends proposals after
+the build.
 
 Findings discovered through adversarial probing are first-class — file
 them at the appropriate severity in the standard Findings sections.
@@ -470,10 +472,12 @@ the formal findings can miss.]
 |---|---|---|---|
 | [probe-slug from Accessibility/UX or Failure-Modes shards] | Accessibility/UX / Failure Modes | PASS / FAIL / N/A | [what you observed] |
 
-## Novel Probes Added This Round
+## Proposed Probes
 [Only if a genuinely new UX/accessibility failure class surfaced
-(discovery-gated). List probe ID(s) and a one-line summary each, or "None —
-nothing new surfaced."]
+(discovery-gated). For each, write the probe in the attack library's schema
+with `Shard: Accessibility/UX or Failure Modes/Functional`, and name the
+finding in this report it came from. Otherwise write "None: nothing new
+surfaced."]
 
 ## SCORE-BLOCK
 [Emit COUNTS, not products. The orchestrator runs `.claude/scripts/score.py`

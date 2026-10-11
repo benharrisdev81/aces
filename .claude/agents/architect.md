@@ -130,8 +130,8 @@ data dependency:
    library. Confirm `format-version: attack-library-v2`. It is sharded; load
    only the **Structural** shard. Run every `active` probe there against the
    codebase (probes are structural, not live-app; reviewer scope still
-   applies). Skip `N/A`, `RETIRED`, and `dormant` probes. Add a novel
-   structural probe only when you discover a genuinely new failure class —
+   applies). Skip `N/A`, `RETIRED`, and `dormant` probes. Propose a new
+   structural probe only when you discover a genuinely new failure class;
    see Active Adversarial Probing below.
 
 ### Step 3 — Survey the Codebase and Declare Language Conventions
@@ -362,10 +362,12 @@ might not surface on a literal reading:
   referenced after a structural revision but not removed.
 
 **Novel-probe quota (discovery-gated, not mandatory).** When you discover a
-genuinely new structural failure class, add it to the Structural shard of
-`pipeline-state/attack-library.md` using the schema there. Adding none is
-correct for a round where nothing new surfaced — do not manufacture filler
-to hit a quota; it dilutes every future review.
+genuinely new structural failure class, propose a probe for it in your
+report's Proposed Probes section. Proposing none is correct for a round where
+nothing new surfaced — do not manufacture filler to hit a quota; it dilutes
+every future review. Never edit `pipeline-state/attack-library.md` yourself:
+the orchestrator is its only writer, and it dedups and appends proposals after
+the build.
 
 Findings discovered through adversarial probing are first-class — file
 them at the appropriate severity in the standard Findings sections below.
@@ -514,10 +516,11 @@ specific findings. Examples:
 |---|---|---|
 | [probe-slug from the Structural shard] | PASS / FAIL / N/A | [what you observed] |
 
-## Novel Probes Added This Round
+## Proposed Probes
 [Only if a genuinely new structural failure class surfaced (discovery-gated).
-List probe ID(s) and a one-line summary each, or "None — nothing new
-surfaced."]
+For each, write the probe in the attack library's schema with
+`Shard: Structural`, and name the finding in this report it came from.
+Otherwise write "None: nothing new surfaced."]
 
 ## SCORE-BLOCK
 [Emit COUNTS, not products. The orchestrator runs `.claude/scripts/score.py`

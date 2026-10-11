@@ -6,6 +6,10 @@ The discriminators' growing test set. Confirmed flaws landed in any round of
 any build are distilled into reusable probes here, so the test surface grows
 across builds and the Generator cannot converge on a fixed beatable rubric.
 
+Only the orchestrator writes this file (CLAUDE.md Responsibility #13).
+Reviewers propose new probes in the `## Proposed Probes` section of their
+own reports, and the orchestrator dedups and appends them after the build.
+
 Builds run in per-build clones of the template repo: new probes return to
 the template through the harvest-back protocol (CLAUDE.md Responsibility
 #17) as a reviewable PR. Harvest-time dedup is checked against the

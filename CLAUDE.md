@@ -134,12 +134,15 @@ single sub-agent can:
     what the build does well for a PASS, or every finding still open in the
     Round 5 reports for UNRECOVERABLE.
 
-13. **Attack-library harvesting.** On any reviewer FAIL, once the finding is
-    confirmed real (not withdrawn via `CONFLICT.md` adjudication), distill it
-    into a probe and append it to the matching dimension shard of
-    `pipeline-state/attack-library.md` using that file's schema and
-    append-only/dedup/retirement policy. The library persists across builds
-    via the harvest-back protocol (Responsibility #17).
+13. **Attack-library harvesting.** You are the only writer of
+    `pipeline-state/attack-library.md`; reviewers never edit it. After the
+    build ends (gate PASS or Round 5 FAIL; for a user-override build, see
+    #14), read the `## Proposed Probes` section of every round's reports. Keep
+    a proposal only if its source finding was real: fixed in a later round, or
+    still open at the end. Append each kept probe to the end of its shard,
+    using that file's schema and append-only/dedup/retirement policy; a
+    duplicate increments the existing probe's `Seen:` count. The library
+    persists across builds via the harvest-back protocol (Responsibility #17).
 
 14. **User-override acceptance.** If the user accepts a build the gate
     failed, write `EVAL_PASS.md` per #12, with the line
@@ -244,9 +247,9 @@ State files that realize the game:
 - **`.claude/scripts/score.py`** — deterministic calculator; the only thing
   that does the multiplication and summation.
 - **`pipeline-state/attack-library.md`** — sharded, cross-build probe
-  library. Reviewers load only their dimension's shard and add a novel probe
-  only when a genuinely new failure class surfaces (discovery-gated, not
-  mandatory — a quota of filler probes would dilute every future round).
+  library. Reviewers load only their dimension's shard and propose a probe
+  in their report only when a genuinely new failure class surfaces
+  (discovery-gated, not mandatory); the orchestrator alone appends (#13).
 
 The orchestrator's responsibilities #11–#14 above own the writes. Reviewers
 emit `score-block` counts and probe findings; the orchestrator runs the
@@ -412,7 +415,7 @@ content work between the two calls):
 | `pipeline-state/user-intervention.md` | Orchestrator (from "Pause build" or escalation answers) | Generator |
 | `pipeline-state/cost.md` | Orchestrator (per-round token usage) | Orchestrator |
 | `pipeline-state/value-function.md` | Template (canonical) | All reviewer agents, Generator |
-| `pipeline-state/attack-library.md` | Orchestrator (appends confirmed defects) + reviewer agents (append novel probes to their shard) | All reviewer agents (own shard only) |
+| `pipeline-state/attack-library.md` | Orchestrator only (appends reviewers' Proposed Probes after the build, #13) | Architect, Design Critic, Security Prober (own shard only) |
 | `pipeline-state/playbook.md` | Orchestrator (post-build lesson harvesting) | Generator only (never reviewers) |
 | `pipeline-state/build-ledger.md` | Orchestrator (one row per build, via harvest PR) | Orchestrator, user (threshold calibration) |
 | `.claude/scripts/score.py` | Template (canonical calculator) | Orchestrator (runs each round) |

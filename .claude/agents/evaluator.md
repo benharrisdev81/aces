@@ -266,11 +266,13 @@ Probe at minimum:
   contradict each other when used together.
 
 **Novel-probe quota (discovery-gated, not mandatory).** When your probing
-surfaces a genuinely new failure class, add it to the appropriate shard of
-`pipeline-state/attack-library.md` using the schema there. Adding zero probes
-is the correct outcome for a round where nothing new surfaced — do not
-manufacture filler to hit a quota; a library full of low-value probes
-dilutes every future round. Quality gates this, not a counter.
+surfaces a genuinely new failure class, propose a probe for it in your
+report's Proposed Probes section, naming the shard whose owner should run it.
+Proposing none is the correct outcome for a round where nothing new surfaced —
+do not manufacture filler to hit a quota; a library full of low-value probes
+dilutes every future round. Quality gates this, not a counter. Never edit
+`pipeline-state/attack-library.md` yourself: the orchestrator is its only
+writer, and it dedups and appends proposals after the build.
 
 Successful breaks here are first-class findings — file them at the
 appropriate Tier and severity, exactly like coverage failures. A break
@@ -451,10 +453,12 @@ Structured table — one row per prior CRITICAL/MODERATE finding:
 ## Security Baseline (from security_probe_round_N.md)
 - security_fail: [N] | not_tested: [N]
 
-## Novel Probes Added This Round
-[Only if a genuinely new failure class surfaced (discovery-gated — see
-Directive 6). List the probe ID(s) you appended and a one-line summary of
-each, or write "None — nothing new surfaced."]
+## Proposed Probes
+[Only if a genuinely new failure class surfaced (discovery-gated; see
+Directive 6). For each, write the probe in the attack library's schema,
+with the `Shard:` whose owner should run it (usually Failure
+Modes/Functional), and name the finding in this report it came from.
+Otherwise write "None: nothing new surfaced."]
 
 ## SCORE-BLOCK
 [Emit counts and subscores, not a verdict. The ship gate

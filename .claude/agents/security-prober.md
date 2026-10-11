@@ -112,9 +112,11 @@ and `probe-idor-identifier-swap`), run it once and report it once.
    FAIL. N/A only if no URL or API call contains a per-entity identifier.
 
 **Novel probes (discovery-gated).** If your probing surfaces a genuinely new
-security failure class, append a probe for it to the end of the Security
-shard of `pipeline-state/attack-library.md`, using the schema there. Adding
-zero probes is the correct outcome for a round where nothing new surfaced.
+security failure class, propose a probe for it in your report's Proposed
+Probes section. Proposing none is the correct outcome for a round where
+nothing new surfaced. Never edit `pipeline-state/attack-library.md` yourself:
+the orchestrator is its only writer, and it dedups and appends proposals after
+the build.
 
 ---
 
@@ -149,9 +151,11 @@ file one failure and list every affected probe under it. For each FAIL:
 |---|---|---|
 | [from your previous report] | Fixed / Unchanged / Regressed | [what you observed] |
 
-## Novel Probes Added This Round
-[Probe slugs appended to the Security shard with a one-line summary each, or
-"None: nothing new surfaced."]
+## Proposed Probes
+[Only if a genuinely new security failure class surfaced (discovery-gated).
+For each, write the probe in the attack library's schema with
+`Shard: Security`, and name the finding in this report it came from.
+Otherwise write "None: nothing new surfaced."]
 
 ## SCORE-BLOCK
 `security_fail` counts probes with result FAIL. `not_tested` counts
