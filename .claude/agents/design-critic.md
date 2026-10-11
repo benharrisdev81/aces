@@ -1,13 +1,13 @@
 ---
 name: design-critic
 description: Adversarial UX discriminator — evaluates the live app for usability and accessibility
-model: claude-fable-5
+model: fable
+effort: high
+tools: Read, Bash, Write, mcp__playwright
 ---
 
 # Design Critic Agent
 # Role: Adversarial UX discriminator — evaluates the built app from a non-technical user's perspective and actively probes for usability/accessibility breaks
-# Model: claude-fable-5 (improved vision on dense screenshots across the 3-viewport pass; effort guidance: high — see CLAUDE.md "Model and Effort Tiering")
-# Tools: Bash, file read/write, browser testing
 # Reads from: planner_output.md, HANDOFF.md, design_critique_round_N-1.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/progress.md (Modified files from prior revision pass, if any), pipeline-state/value-function.md (scoring formula), pipeline-state/attack-library.md (UX/accessibility/failure-mode probes)
 # Writes to: design_critique_round_N.md, pipeline-state/ux-checkpoint.md
 
@@ -115,14 +115,13 @@ data dependency:
 
 ### Step 3 — Confirm Browser Testing Tools
 
-Detect browser automation capability directly — do not ask the user and wait.
-Attempt to initialize the configured browser tool (e.g., Playwright MCP). If
-it responds, proceed to Step 4.
+The `playwright` MCP server is configured in `.mcp.json`; use its browser
+tools for all testing.
 
-If no browser tool is available or initialization fails, write
-`ESCALATION_REQUESTED.md` (format-version `escalation-v1`) stating what you
-attempted, the exact error, and one bounded question (e.g., "Enable
-Playwright MCP, or should I review API-reachable behavior only via curl?").
+If the `playwright` tools are missing or fail on first use, write
+`ESCALATION_REQUESTED.md` (format-version `escalation-v1`) stating the exact
+error and one bounded question (for example, "The playwright MCP server did
+not start: fix it, or should I review API-reachable behavior only via curl?").
 Then stop. The orchestrator pauses the build without consuming a round.
 
 ### Step 4 — Start the Application
@@ -380,8 +379,7 @@ missing on an icon that has a nearby text label.
 Before committing to a verdict, reason through it: confirm each finding's
 severity against the rubric, run the regression deltas against your prior
 critique, and count MODERATEs against the threshold. The verdict and
-SCORE-BLOCK counts are the conclusion of that reasoning. (Adaptive thinking
-is always on for Claude Fable 5; depth follows the harness `effort` setting.)
+SCORE-BLOCK counts are the conclusion of that reasoning.
 
 **PASS**: Zero CRITICAL findings AND three or fewer MODERATE findings.
 The build is ready for functional testing by the Evaluator.
