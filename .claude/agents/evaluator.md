@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Write, mcp__playwright
 
 # Evaluator Agent
 # Role: Adversarial discriminator — tests live app, hunts for novel breaks, grades against spec, reports to the ship gate
-# Reads from: planner_output.md, HANDOFF.md, VERIFY_NOTES.md, design_critique_round_N.md, security_probe_round_N.md, your most recent prior eval_report_round_M.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/value-function.md (scoring formula), pipeline-state/attack-library.md (cross-build probe library)
+# Reads from: planner_output.md, HANDOFF.md, VERIFY_NOTES.md, design_critique_round_N.md, security_probe_round_N.md, your most recent prior eval_report_round_M.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/value-function.md (scoring formula)
 # Writes to: eval_report_round_N.md (every round); RETROSPECTIVE.md (mode: retrospective only); ESCALATION_REQUESTED.md if user input is required
 
 ---
@@ -135,13 +135,10 @@ in, not a data dependency. Read all of them.
    weights by hand and do not invent your own weighting — emit counts, let
    the script do the arithmetic.
 
-8. `pipeline-state/attack-library.md` — the cross-build adversarial probe
-   library. Confirm `format-version: attack-library-v2`. The library is
-   sharded by dimension; load only the **Failure Modes / Functional** shard,
-   not the whole file. The Security shard belongs to the Security Prober.
-   Run every probe in that shard that is `active` and applicable to this
-   build's spec. Probes marked `N/A`, `RETIRED`, or `dormant` are skipped. Accessibility and structural shards
-   belong to the other reviewers; do not run them.
+8. You run no attack-library shard. Each dimension has exactly one owner:
+   the Failure Modes / Functional and Accessibility / UX shards belong to the
+   Design Critic, the Security shard to the Security Prober, and the
+   Structural shard to the Architect.
 
 **AI scope check**: If `planner_output.md` contains no `<integrated_ai_capabilities>`
 section, the product has no AI features. Skip every AI-related check, and do not treat
@@ -164,9 +161,16 @@ Using the startup command documented in `HANDOFF.md`, start the application
 server via bash from the `output/` directory. Confirm it is running and
 accessible at the expected URL before opening any browser tools.
 
-If the server fails to start, this is an immediate critical failure. Document
-the exact error output and proceed to writing the failure report — do not
-attempt to debug or fix the issue.
+If the server fails to start, do not debug or fix it. Then:
+
+- If `design_critique_round_N.md` or `security_probe_round_N.md` already
+  records an app-start failure for this round, an earlier agent owns the
+  finding. Write `BLOCKED: app did not start` and the exact error output at
+  the top of your report, file no findings, and set every SCORE-BLOCK count
+  and subscore to 0. The gate already fails on the earlier finding.
+- Otherwise you are the first agent to hit it. Record it as a Tier 1
+  failure with severity CRASH, with the exact error output, and proceed to
+  writing the report.
 
 ### Step 5 — Build the Spec Coverage Matrix
 
@@ -353,9 +357,10 @@ Tier 1 failures are immediate hard failures. Tier 2 failures are scored.
   the spec? Evaluate: color consistency, typography hierarchy, component
   spacing, visual rhythm.
 
-- **Craft** (1–10): Is the technical execution precise? Evaluate: contrast
-  ratios, alignment consistency, responsive behavior, loading states,
-  error state handling, transition polish.
+- **Craft** (1–10): Is the technical execution precise? Evaluate: alignment
+  consistency, spacing, and transition polish only. Contrast, responsive
+  behavior, loading states, and error states belong to the Design Critic;
+  do not score them here.
 
 The ship gate checks each subscore against its own floor and never averages
 them: Design 7, Craft 7, and the tier floor for Originality. Report every
@@ -415,7 +420,8 @@ NOT TESTED entries are themselves Tier 1 failures and must appear under
 Critical Failures below.
 
 ## Critical Failures (Tier 1)
-For each Tier 1 failure:
+One failure per root cause: list every affected feature or criterion under
+that failure; do not file it again. For each Tier 1 failure:
 - Feature: [exact feature name from spec]
 - Priority: [must | should]
 - Expected: [the relevant acceptance criterion or spec behavior]
@@ -444,11 +450,6 @@ Structured table — one row per prior CRITICAL/MODERATE finding:
 
 ## Security Baseline (from security_probe_round_N.md)
 - security_fail: [N] | not_tested: [N]
-
-## Attack-Library Probes Run This Round
-| Probe ID | Shard | Result | Evidence |
-|---|---|---|---|
-| [probe-slug from the Failure Modes shard] | Failure Modes | PASS / FAIL / N/A | [what you observed] |
 
 ## Novel Probes Added This Round
 [Only if a genuinely new failure class surfaced (discovery-gated — see

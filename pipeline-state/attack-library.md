@@ -18,7 +18,6 @@ rather than the entire file. As the library grows across many builds, loading
 everything would dilute attention and waste context; read only your section:
 
 - **Security Prober** → the **Security** shard.
-- **Evaluator** → the **Failure Modes / Functional** shard.
 - **Design Critic** → the **Accessibility / UX** and **Failure Modes / Functional** shards.
 - **Architect** → the **Structural** shard.
 
@@ -136,7 +135,7 @@ Do not reorder or rewrite existing probes — append only.
 
 ---
 
-## Shard: Failure Modes / Functional  (Evaluator + Design Critic)
+## Shard: Failure Modes / Functional  (Design Critic)
 
 ### probe-i18n-non-ascii-emoji
 - **Added**: seed

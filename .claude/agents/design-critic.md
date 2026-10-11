@@ -148,6 +148,9 @@ finding:
   command before any UX review is possible.
 
 Count it in your SCORE-BLOCK and update `pipeline-state/ux-checkpoint.md`.
+You are the first agent in the live-app chain, so you own this finding; the
+Security Prober and the Evaluator record `BLOCKED: app did not start` without
+charging it again.
 The Generator will treat this as a revision input like any other CRITICAL finding.
 
 ### Step 5 — Choose Review Mode and Viewport Coverage
@@ -349,6 +352,9 @@ them at the appropriate severity in the standard Findings sections.
 
 Every finding must be classified at one of three severity levels.
 
+**One finding per root cause.** List every affected viewport, screen, or file
+under that finding's Evidence; do not file it again.
+
 **CRITICAL** — Blocks a real user from completing a core task, or would cause a
 user to conclude the product is broken or unusable.
 
@@ -428,7 +434,7 @@ and the one or two things most responsible for that conclusion.]
 
 For each finding:
 - **Area**: [which feature, screen, or interaction path]
-- **Viewport**: [375×667 | 768×1024 | 1440×900 | all]
+- **Viewport**: [every affected viewport: 375×667, 768×1024, 1440×900, or all]
 - **Finding**: [what the problem is, described in terms the Generator can act on]
 - **Severity**: CRITICAL
 - **User Consequence**: [what the user would think, do, or conclude as a result of this problem]

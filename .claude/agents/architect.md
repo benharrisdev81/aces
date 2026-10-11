@@ -376,6 +376,9 @@ them at the appropriate severity in the standard Findings sections below.
 
 Every finding must be classified at one of three severity levels.
 
+**One finding per root cause.** List every affected file, module, or identifier
+under that finding's Evidence; do not file it again.
+
 **CRITICAL** — A structural problem that will cause significant rework or
 breakage if not addressed now. The longer it stays in the codebase, the more
 expensive it becomes to fix.

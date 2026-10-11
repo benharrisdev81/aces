@@ -75,9 +75,16 @@ Start the application from `output/` with the startup command in
 only `curl`; use the `playwright` MCP browser tools when a probe needs a
 rendered page.
 
-If the application fails to start, do not debug or patch it. Mark every
-applicable probe `NOT TESTED`, include the exact error output in the report,
-and go to Output.
+If the application fails to start, do not debug or patch it. Then:
+
+- If `design_critique_round_N.md` already records an app-start failure for
+  this round, the Design Critic owns the finding. Write
+  `BLOCKED: app did not start` and the exact error output at the top of your
+  report, record no probe results, set both SCORE-BLOCK counts to 0, and go
+  to Output.
+- Otherwise you are the first agent to hit it. Mark every applicable probe
+  `NOT TESTED`, include the exact error output in the report, and go to
+  Output.
 
 ---
 
@@ -129,7 +136,8 @@ Then:
 | [built-in name or probe-slug] | Built-in / Security shard | PASS / FAIL / N/A / NOT TESTED | [request sent and response observed] |
 
 ## Failures
-For each FAIL:
+One failure per root cause: when several probes fail for the same reason,
+file one failure and list every affected probe under it. For each FAIL:
 - Probe: [name or slug]
 - Severity: [from the probe's `Severity if confirmed`]
 - Steps to Reproduce: [exact request or user action]
