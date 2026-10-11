@@ -111,8 +111,10 @@ single sub-agent can:
    result, last revision summary). Reading agents start here; deeper files
    are reference material.
 
-10. **Retrospective.** The Evaluator writes `RETROSPECTIVE.md` on PASS or
-    UNRECOVERABLE. Surface it to the user when the pipeline halts.
+10. **Retrospective.** After you write `EVAL_PASS.md` or
+    `EVAL_UNRECOVERABLE.md`, invoke the Evaluator once with
+    `mode: retrospective`; it writes `RETROSPECTIVE.md`. Surface it to the
+    user when the pipeline halts.
 
 11. **Ship gate (computed, never judged).** When all four reports for round
     N exist, run `python3 .claude/scripts/gate.py N --tier <tier>`, taking
@@ -122,8 +124,14 @@ single sub-agent can:
     line into `pipeline-state/index.md`. Never decide PASS or FAIL yourself,
     and never edit a report's score-block.
 
-12. **(Retired.)** The scoreboard was removed. The number is kept so that
-    references to later responsibilities stay valid.
+12. **Terminal files.** Only you write `EVAL_PASS.md` and
+    `EVAL_UNRECOVERABLE.md`, and only from `gate.py` output: `EVAL_PASS.md`
+    after exit 0, `EVAL_UNRECOVERABLE.md` after exit 1 in Round 5. Start each
+    with its format-version line (`eval-pass-v1` or
+    `eval-unrecoverable-v1`). Include the round number, the commit, the
+    gate's full output, and a short summary drawn from that round's reports:
+    what the build does well for a PASS, or every finding still open in the
+    Round 5 reports for UNRECOVERABLE.
 
 13. **Attack-library harvesting.** On any reviewer FAIL, once the finding is
     confirmed real (not withdrawn via `CONFLICT.md` adjudication), distill it
@@ -132,15 +140,21 @@ single sub-agent can:
     append-only/dedup/retirement policy. The library persists across builds
     via the harvest-back protocol (Responsibility #17).
 
-14. **(Retired.)** False-positive accounting was removed. The number is
-    kept so that references to later responsibilities stay valid.
+14. **User-override acceptance.** If the user accepts a build the gate
+    failed, write `EVAL_PASS.md` per #12, with the line
+    `**Accepted by user override**` under its header, the failing gate
+    output, and the user's words verbatim. Then run the retrospective (#10).
+    Do not run harvesting (#13, #16, #17) automatically. Ask the user
+    separately whether to harvest this build, and run it only on an explicit
+    yes. Never bundle the harvest into the acceptance question.
 
 15. **Missing reports.** If a subagent returns no report file, re-invoke it
     once with `model: opus`; if that also fails, write
     `ESCALATION_REQUESTED.md`. A re-invocation does not consume a round.
 
 16. **Playbook harvesting (Generator memory).** After `RETROSPECTIVE.md` is
-    written (PASS or UNRECOVERABLE), distill the build's transferable
+    written following a gate PASS or a Round 5 FAIL (for a user-override
+    build, see #14), distill the build's transferable
     lessons — especially its "Persistent Failure Patterns" — into
     `pipeline-state/playbook.md` using that file's schema and
     append/dedup/retire policy. The playbook is the Generator's cross-build
@@ -153,7 +167,8 @@ single sub-agent can:
     clones, so probes, lessons, and calibration data do not accumulate in
     the template by themselves. After Responsibilities #13 and #16 are
     complete (post-`RETROSPECTIVE.md`, on PASS **or** UNRECOVERABLE — failed
-    builds usually teach the most), execute the Harvest-Back Protocol below:
+    builds usually teach the most; for a user-override build, see #14),
+    execute the Harvest-Back Protocol below:
     `.claude/scripts/harvest.sh` stages the template's latest `main` in a
     `.harvest/` worktree, the orchestrator merges this build's new
     attack-library probes, playbook lessons, and one `build-ledger.md` row
@@ -183,6 +198,8 @@ When invoked with "Resume build":
      - If `architecture_review_round_N.md` is missing: invoke the Architect.
      - If any live-app chain report for round N is missing (`design_critique_round_N.md`, `security_probe_round_N.md`, `eval_report_round_N.md`): invoke the first missing agent in chain order (Design Critic, Security Prober, Evaluator) and continue the chain from there. This can run in parallel with the Architect branch above.
      - If all four round N reports exist and neither `EVAL_PASS.md` nor `EVAL_UNRECOVERABLE.md` exists: run the gate (Orchestration Step 5). The gate is deterministic, so re-running it is safe.
+   - If `EVAL_PASS.md` or `EVAL_UNRECOVERABLE.md` exists but `RETROSPECTIVE.md` does not: invoke the Evaluator with `mode: retrospective`.
+   - If `RETROSPECTIVE.md` exists: the build is finished. Ask the user whether harvesting (#13, #16, #17) already ran before running it.
    - If Generator is mid-phase (session.md shows incomplete phase): re-invoke the Generator, instructing it to read `pipeline-state/session.md` and continue from the last completed feature.
    - If a phase boundary was the last log entry in progress.md (HANDOFF COMPLETE not present): re-invoke the Generator at the next phase.
    - If only Planner has completed (planner_output.md is populated, progress.md is empty): re-invoke the Generator from Phase 1.
@@ -273,7 +290,8 @@ build's deltas to the template as a reviewable PR.
 
 **When:** after `RETROSPECTIVE.md` is written and Responsibilities #13
 (attack-library harvesting) and #16 (playbook harvesting) have run in the
-clone. Harvest UNRECOVERABLE builds too.
+clone. Harvest UNRECOVERABLE builds too. Harvest a user-override build only
+when the user explicitly asks (Responsibility #14).
 
 **Steps** (the script does the git plumbing; the orchestrator does the
 content work between the two calls):
@@ -374,7 +392,7 @@ content work between the two calls):
    python3 .claude/scripts/gate.py N --tier <originality_tier from planner_output.md>
    ```
 
-   - **Exit 0, PASS:** write `EVAL_PASS.md`, then invoke the Evaluator with
+   - **Exit 0, PASS:** write `EVAL_PASS.md` (#12), then invoke the Evaluator with
      `mode: retrospective` to write `RETROSPECTIVE.md`. Then run
      attack-library harvesting (#13), playbook harvesting (#16), and
      harvest-back (#17). The pipeline is complete.
@@ -383,11 +401,13 @@ content work between the two calls):
      path of every Round N report with open findings, for one combined
      revision pass. When its `REVISION COMPLETE` record appears in
      `pipeline-state/progress.md`, repeat from Step 4 for Round N+1.
-   - **Exit 1, FAIL, N = 5:** write `EVAL_UNRECOVERABLE.md`, then run the
-     retrospective and harvest steps as on PASS. Stop.
+   - **Exit 1, FAIL, N = 5:** write `EVAL_UNRECOVERABLE.md` (#12), then run
+     the retrospective and harvest steps as on PASS. Stop.
    - **Exit 2, INVALID:** the gate's output names the offending report.
      Re-invoke that reviewer once for the same round, then rerun the gate.
      If it is still INVALID, write `ESCALATION_REQUESTED.md`.
+
+   If the user accepts a build the gate failed, follow Responsibility #14.
 
 ## File Conventions
 | File | Written by | Read by |
@@ -402,9 +422,9 @@ content work between the two calls):
 | `design_critique_round_N.md` | Design Critic | `gate.py`, Evaluator, Generator (next round) |
 | `security_probe_round_N.md` | Security Prober | `gate.py`, Evaluator, Generator (next round) |
 | `eval_report_round_N.md` | Evaluator | `gate.py`, Generator (next round) |
-| `EVAL_PASS.md` | Evaluator | Orchestrator |
-| `EVAL_UNRECOVERABLE.md` | Evaluator | Orchestrator |
-| `RETROSPECTIVE.md` | Evaluator | Orchestrator (surfaces to user) |
+| `EVAL_PASS.md` | Orchestrator (from `gate.py` output, or a user override) | Evaluator (`mode: retrospective`), user |
+| `EVAL_UNRECOVERABLE.md` | Orchestrator (from `gate.py` output) | Evaluator (`mode: retrospective`), user |
+| `RETROSPECTIVE.md` | Evaluator (`mode: retrospective`) | Orchestrator (surfaces to user) |
 | `ESCALATION_REQUESTED.md` | Any agent | Orchestrator → User |
 | `CONFLICT.md` | Generator | Orchestrator → Evaluator (next round) |
 | `pipeline-state/round.md` | Orchestrator | All reviewer agents |
