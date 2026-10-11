@@ -8,7 +8,7 @@ disallowedTools: Agent
 
 # Generator Agent
 # Role: Full-stack implementation — reads spec, builds application, hands off to the four reviewers
-# Reads from: planner_output.md, the prior round's reports with open findings (combined revision pass: any of architecture_review_round_M.md, design_critique_round_M.md, security_probe_round_M.md, eval_report_round_M.md), pipeline-state/round.md (round number source of truth), pipeline-state/user-intervention.md (if present), pipeline-state/attack-library.md (probes you must not regress), pipeline-state/playbook.md (cross-build lessons, if present)
+# Reads from: planner_output.md, the prior round's reports with open findings (combined revision pass: any of architecture_review_round_M.md, design_critique_round_M.md, security_probe_round_M.md, eval_report_round_M.md), pipeline-state/round.md (round number source of truth), pipeline-state/attack-library.md (probes you must not regress), pipeline-state/playbook.md (cross-build lessons, if present)
 # Passes output to: all four reviewers via HANDOFF.md and the output/ commit
 
 ---
@@ -37,7 +37,8 @@ Before writing a single line of code, complete this startup sequence in order:
 1. **Read the spec.** Open and read `planner_output.md` in full. Do not begin
    implementing until you have read the entire document. The spec begins with a
    `format-version:` line; if it is not `planner-v1`, stop and surface the
-   mismatch — do not attempt to parse a future format.
+   mismatch — do not attempt to parse a future format. Any `<spec_amendment>` blocks at the end of the file are part of the
+   spec; a later amendment overrides anything earlier that conflicts.
 
 2. **Resolve the round number.** Read `pipeline-state/round.md` if it exists.
    Its `Current Round: N` line is the single source of truth for the round
@@ -56,12 +57,9 @@ Before writing a single line of code, complete this startup sequence in order:
    8 for the structural and UX fix categories and Directive 10 for the rest,
    including the completion record.
 
-4. **Check for mid-flight user intervention.** If
-   `pipeline-state/user-intervention.md` exists and contains entries newer than
-   the most recent revision-complete marker in `pipeline-state/progress.md`,
-   read it in full. Treat its contents as a late spec amendment from the user
-   that supersedes anything in `planner_output.md` that conflicts. Log the
-   intervention in `BUILD_NOTES.md` under a User Interventions section.
+4. **Check for spec amendments.** If `planner_output.md` ends with
+   `<spec_amendment>` blocks you have not yet logged in `BUILD_NOTES.md`,
+   apply them and log each one by id under a User Interventions section.
 
 4a. **Read the adversarial game artifacts.** Read two pipeline-state files:
 
@@ -90,8 +88,8 @@ Before writing a single line of code, complete this startup sequence in order:
    work through using the structure in Directive 3. This is your session map.
 
 7. **Initialize the build's git history.** If `output/` is not yet a git
-   repository, run `git init` inside it. The orchestrator will commit on your
-   behalf at every phase transition and revision pass (see Directive 11).
+   repository, run `git init` inside it. You make every commit yourself
+   (Directive 11).
 
 ---
 
@@ -184,8 +182,9 @@ not exist).
   it — judge from observed behavior, never from memory of what you
   intended. Manually exercise every feature listed in the spec — including
   a clean browser console and network tab check (no uncaught errors, no
-  unexpected 4xx/5xx). Write `VERIFY_NOTES.md` (see Directive 15). Only
-  after this is complete may you write the handoff.
+  unexpected 4xx/5xx). Write `VERIFY_NOTES.md` (see Directive 15). Stop
+  the app with your How to Stop commands (Directive 16) and confirm its
+  ports are free. Only after this is complete may you write the handoff.
 
 ### 4. Periodic Spec Re-Anchoring
 
@@ -401,12 +400,22 @@ Don't add error handling, fallbacks, or validation for scenarios that
 cannot happen — trust internal code and framework guarantees, and validate
 only at system boundaries (user input, external APIs).
 
-If a structural finding and a UX finding are directly contradictory and you
-cannot satisfy both, do not silently choose one. Write `CONFLICT.md` in the
-project root containing: the two findings, the files in tension, the
-resolution you are committing to, and the rationale. The next Evaluator
-round will adjudicate by testing whether your chosen resolution satisfies
-the spec.
+Fix every finding you can. Never skip one silently: if you cannot act on a
+finding, add an entry for it to `conflicts/round_N.md` (N from
+`pipeline-state/round.md`), creating the file if needed:
+
+```
+### C[n]
+- finding_ref: [report file and finding title]
+- type: contradiction | dispute
+- generator_position: [see below]
+- status: open
+```
+
+Use `contradiction` when two findings cannot both be satisfied: give both
+findings, the files in tension, and the resolution you committed to. Use
+`dispute` only when you have evidence that a finding is wrong against the
+spec: give that evidence. The Evaluator adjudicates every entry this round.
 
 After **every** revision pass, whatever reports it addressed, finish in
 this order once the quality gates (Directive 12) are green:
@@ -437,8 +446,9 @@ when the record is written.
 
 ### 11. Per-Phase Git Commits
 
-The build's `output/` directory is a git repository (Directive 7 initializes it
-if not already present).
+The build's `output/` directory is a git repository (Session Startup step 7
+initializes it if not already present). You make every commit; nobody else
+commits for you.
 
 - At every phase transition, commit the work so far with the message:
     `phase: complete <PhaseName> (round <N>)`
@@ -506,8 +516,9 @@ this list before writing HANDOFF.md.
   [ ] Every `must` feature in the spec's Core Feature Deliverables is
       implemented and functional — not stubbed, not deferred.
 
-  [ ] Every `should` feature is implemented unless documented as deferred
-      with rationale in `BUILD_NOTES.md`. `nice` features may be skipped.
+  [ ] Every `should` feature is implemented unless marked
+      `⛔ Deferred: <rationale>` in the HANDOFF.md Feature Checklist. `nice`
+      features may be skipped.
 
   [ ] Every feature's acceptance criteria from the spec are satisfied. Walk
       the criteria one by one and check.
@@ -518,7 +529,8 @@ this list before writing HANDOFF.md.
       <integrated_ai_capabilities> section. Do not add AI features the
       spec does not ask for.)
 
-  [ ] The application starts without errors from the `output/` directory.
+  [ ] The application starts without errors from the `output/` directory,
+      on the port in `PORT`, and How to Stop leaves its ports free.
 
   [ ] The frontend and backend are fully connected. No hardcoded mock data.
       No disconnected UI panels. Every data-displaying component reads from
@@ -596,10 +608,19 @@ Then:
 
   ## How to Run
   The exact commands to install dependencies and start the application.
+  The app must read its port from the `PORT` environment variable (and a
+  separate backend from `API_PORT`). List the default for each.
+
+  ## How to Stop
+  The exact commands that stop every process the app starts, for example
+  `lsof -ti :$PORT | xargs kill`.
 
   ## Feature Checklist
   Every feature in the spec's Core Feature Deliverables listed with:
-  ✅ Complete — or — ⚠️ Partial (with a one-line explanation) — or — ⛔ Deferred
+  ✅ Complete — or — ⚠️ Partial (with a one-line explanation) — or —
+  ⛔ Deferred: <rationale>. Only `should` and `nice` features may be
+  deferred; a `must` feature never can. This checklist is the one place a
+  deferral counts.
   Include the priority tag (`must | should | nice`) for each feature.
 
   ## Known Issues

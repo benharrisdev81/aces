@@ -56,14 +56,17 @@ score-block. Every reviewer in the round reviews this same commit.
 1. `planner_output.md`: confirm `format-version: planner-v1`. Note whether the
    product has authentication, what data it handles, and whether the spec
    designates it as public or unauthenticated (see
-   `<constraints_and_integrations>`).
+   `<constraints_and_integrations>`). Any `<spec_amendment>` blocks at the end of the file are part of the
+   spec; a later amendment overrides anything earlier that conflicts.
 2. `HANDOFF.md`: confirm `format-version: handoff-v1`. Note the startup
    command, the URL, and the API endpoints.
 3. Your previous report (if Round > 1): the existing
    `security_probe_round_M.md` with the highest M below N. Every probe that
    failed in it must be re-run and its current state recorded
    in the Regression Check.
-4. `pipeline-state/attack-library.md`: confirm
+4. `conflicts/round_*.md` (if any): never re-file a finding the Evaluator
+   marked `withdrawn` there. File `open` and `upheld` findings as usual.
+5. `pipeline-state/attack-library.md`: confirm
    `format-version: attack-library-v2`. Load only the **Security** shard. Run
    every probe in it that is `active` and applicable to this build. Skip
    probes marked `RETIRED`, `dormant`, or whose `N/A condition` holds.
@@ -71,7 +74,8 @@ score-block. Every reviewer in the round reviews this same commit.
 ### Step 3: Start the Application
 
 Start the application from `output/` with the startup command in
-`HANDOFF.md`, and confirm it responds at the expected URL. Most probes need
+`HANDOFF.md`. Set `PORT` (and `API_PORT`, if `HANDOFF.md` lists one) to the values in
+`HANDOFF.md`, and record the PID of every process you start. Confirm it responds at the expected URL. Most probes need
 only `curl`; use the `playwright` MCP browser tools when a probe needs a
 rendered page.
 
@@ -122,7 +126,9 @@ the build.
 
 ## Output
 
-Stop the application processes you started. Then write
+Before writing your report, stop every process you started, using the How
+to Stop commands in `HANDOFF.md`, and confirm the ports are free
+(`lsof -ti :<port>` prints nothing). Then write
 `security_probe_round_[N].md` to the project root, beginning with the line:
 
 format-version: security-probe-v1

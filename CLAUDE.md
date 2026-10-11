@@ -61,10 +61,9 @@ mirrors those values.
   files to determine where the pipeline was interrupted, then re-invokes the
   appropriate sub-agent.
 - **Pause and add mid-flight input:** "Pause build: [feedback / change /
-  question]" — appends the user's message to
-  `pipeline-state/user-intervention.md`. The next Generator pass reads it and
-  treats it as a late spec amendment. Use sparingly; mid-flight changes
-  invalidate work already done.
+  question]" — appends the user's message to `planner_output.md` as a spec
+  amendment (Responsibility #7). Use sparingly; mid-flight changes invalidate
+  work already done.
 
 ## Orchestrator Responsibilities
 
@@ -89,17 +88,29 @@ single sub-agent can:
    verify the `format-version:` header on the first line. On mismatch, halt
    with a clear error — do not let an agent parse a future format.
 
-5. **Conflict resolution.** If a Generator revision pass writes `CONFLICT.md`,
-   surface it to the user in the next status check. Do not silently merge
-   contradictory reviewer findings.
+5. **Conflict resolution.** The Generator records findings it cannot act on
+   in `conflicts/round_N.md`, and the Evaluator adjudicates them in the same
+   round. Do not pause for an `open`, `upheld`, or `withdrawn` entry. Pause
+   and ask the user only about an entry marked `needs-user`, and record the
+   answer as a spec amendment (#7).
 
 6. **Escalation handling.** If any agent writes `ESCALATION_REQUESTED.md`, pause
-   the build, surface the question to the user, capture their answer to
-   `pipeline-state/user-intervention.md`, and resume. Do not consume a round.
+   the build, surface the question to the user, record their answer as a
+   spec amendment (#7), and resume. Do not consume a round.
 
-7. **Mid-flight user intervention.** When the user issues "Pause build:
-   [message]", append the message to `pipeline-state/user-intervention.md`
-   with a timestamp. The next Generator pass reads and processes it.
+7. **Spec amendments.** When the user issues "Pause build: [message]" or
+   answers an escalation, append to the end of `planner_output.md`:
+
+   ```
+   <spec_amendment id="A[n]" date="[timestamp]">
+   [the user's words, verbatim]
+   </spec_amendment>
+   ```
+
+   Every agent reads `planner_output.md`, so every agent sees it; a later
+   amendment wins over anything earlier. Also append the same text with a
+   timestamp to `pipeline-state/user-intervention.md`, which is a raw log
+   only and no agent reads.
 
 8. **Cost tracking.** Append a per-round entry to `pipeline-state/cost.md`
    recording approximate tokens consumed. If the cost threshold is reached
@@ -191,10 +202,10 @@ When invoked with "Resume build":
 6. Read `pipeline-state/ux-checkpoint.md` to find the last Design Critic round state.
 6b. Read `pipeline-state/security-checkpoint.md` to find the last Security Prober round state.
 7. Read `pipeline-state/session.md` to find the last completed feature within the current Generator phase.
-8. Read `pipeline-state/user-intervention.md` (if it exists) for any pending user input.
+8. Read the `<spec_amendment>` blocks at the end of `planner_output.md`, if any.
 9. Determine re-entry point (check in this order):
    - If `ESCALATION_REQUESTED.md` exists and is unanswered: surface the question to the user; pause.
-   - If `CONFLICT.md` exists and is unresolved: surface to the user; pause.
+   - If a `conflicts/round_*.md` entry is marked `needs-user` and no spec amendment answers it: surface it to the user; pause.
    - If round.md shows Round N > 1 and progress.md has no `REVISION COMPLETE` record for Round N: re-invoke the Generator for the combined revision, passing every Round N-1 report with open findings.
    - The remaining reviewer branches apply only once the round's Generator pass is complete (`HANDOFF COMPLETE` for Round 1, the `REVISION COMPLETE` record for Round N > 1):
      - If any reviewer has round N IN PROGRESS in its checkpoint file: re-invoke it. If it belongs to the live-app chain, continue the chain after it.
@@ -295,16 +306,18 @@ content work between the two calls):
 
 ## Conflict and Escalation Handling
 
-- **CONFLICT.md** — Generator writes this when two reviewer findings are
-  directly contradictory and it cannot satisfy both. The orchestrator
-  surfaces the conflict to the user and lets the Evaluator's next round
-  adjudicate against the spec.
+- **`conflicts/round_N.md`**: the Generator adds one entry per finding it
+  cannot act on, as a `contradiction` (two findings that cannot both be
+  satisfied) or a `dispute` (evidence that a finding is wrong against the
+  spec). The Evaluator adjudicates each entry in the same round as `upheld`,
+  `withdrawn`, or `needs-user`. Reviewers never re-file a `withdrawn`
+  finding. The orchestrator pauses only for `needs-user`.
 - **ESCALATION_REQUESTED.md** — Any agent writes this to request user input.
-  The orchestrator pauses, surfaces the question, captures the answer to
-  `pipeline-state/user-intervention.md`, and resumes. This does not consume
-  a round.
-- **user-intervention.md** — Append-only log of all mid-flight user input.
-  Each entry is timestamped. The Generator reads new entries on every pass.
+  The orchestrator pauses, surfaces the question, records the answer as a
+  spec amendment (#7), and resumes. This does not consume a round.
+- **user-intervention.md** — Append-only raw log of all mid-flight user
+  input. No agent reads it; amendments reach agents through
+  `planner_output.md`.
 
 ## Orchestration Steps
 
@@ -344,7 +357,9 @@ content work between the two calls):
       starts the app.
    b. The **live-app chain**, one agent after another, never in parallel.
       Each agent starts the app, tests it, and stops it before writing its
-      report.
+      report. Before launching each agent, free the app's ports: run the
+      How to Stop commands in `HANDOFF.md`, then
+      `lsof -ti :<port> | xargs kill` for each port it lists.
       1. The **Design Critic** reviews usability and accessibility across
          ten dimensions plus the i18n probe, at three viewport sizes, and
          writes `design_critique_round_N.md`.
@@ -387,7 +402,7 @@ content work between the two calls):
 | File | Written by | Read by |
 |---|---|---|
 | `clarifier_output.md` | Clarifier (`mode: report`) | Planner |
-| `planner_output.md` | Planner | Generator, Architect, Design Critic, Security Prober, Evaluator |
+| `planner_output.md` | Planner (orchestrator appends `<spec_amendment>` blocks) | Generator, Architect, Design Critic, Security Prober, Evaluator |
 | `output/` | Generator | Architect, Design Critic, Security Prober, Evaluator |
 | `HANDOFF.md` | Generator | Architect, Design Critic, Security Prober, Evaluator |
 | `BUILD_NOTES.md` | Generator | Architect, Evaluator |
@@ -400,7 +415,7 @@ content work between the two calls):
 | `EVAL_UNRECOVERABLE.md` | Orchestrator (from `gate.py` output) | Evaluator (`mode: retrospective`), user |
 | `RETROSPECTIVE.md` | Evaluator (`mode: retrospective`) | Orchestrator (surfaces to user) |
 | `ESCALATION_REQUESTED.md` | Any agent | Orchestrator → User |
-| `CONFLICT.md` | Generator | Orchestrator → Evaluator (next round) |
+| `conflicts/round_N.md` | Generator (entries), Evaluator (status) | Evaluator, all reviewers, Orchestrator |
 | `pipeline-state/round.md` | Orchestrator | All reviewer agents |
 | `pipeline-state/index.md` | Orchestrator | All agents (at-a-glance state) |
 | `pipeline-state/progress.md` | Generator (phase transitions + one `REVISION COMPLETE` record per revision pass) | Orchestrator, Architect, Design Critic |
@@ -409,7 +424,7 @@ content work between the two calls):
 | `pipeline-state/ux-checkpoint.md` | Design Critic (round state) | Orchestrator |
 | `pipeline-state/security-checkpoint.md` | Security Prober (round state) | Orchestrator |
 | `pipeline-state/session.md` | Generator (per-feature progress) | Orchestrator (resume) |
-| `pipeline-state/user-intervention.md` | Orchestrator (from "Pause build" or escalation answers) | Generator |
+| `pipeline-state/user-intervention.md` | Orchestrator (raw log of "Pause build" messages and escalation answers) | User only |
 | `pipeline-state/cost.md` | Orchestrator (per-round token usage) | Orchestrator |
 | `pipeline-state/ship-gate.md` | Template (mirror of `gate.py`) | Orchestrator, user |
 | `pipeline-state/attack-library.md` | Orchestrator only (appends reviewers' Proposed Probes after the build, #13) | Architect, Design Critic, Security Prober (own shard only) |

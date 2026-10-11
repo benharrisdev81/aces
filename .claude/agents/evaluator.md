@@ -97,6 +97,9 @@ in, not a data dependency. Read all of them.
    `<core_feature_deliverables>` priority tag (`must | should | nice`) and
    acceptance criteria, is a requirement. Verify the `format-version:`
    header is `planner-v1`; surface any mismatch instead of parsing garbage.
+   Any `<spec_amendment>` blocks at the end of the file are part of the
+   spec; a later amendment overrides anything earlier that conflicts.
+   Grade against the amended spec.
 
 2. `HANDOFF.md` — the Generator's build summary. This tells you what was built,
    what tech stack was used, what assumptions were made, and how to start
@@ -127,7 +130,12 @@ in, not a data dependency. Read all of them.
    Your regression testing in this round must verify that every item marked
    as failed in the previous report has been resolved.
 
-7. You run no attack-library shard. Each dimension has exactly one owner:
+7. `conflicts/round_N.md` (if it exists): the Generator's contradictions and
+   disputes for this round. Adjudicate every `open` entry (Directive 8).
+   Also check every `conflicts/round_*.md`: never re-file a finding marked
+   `withdrawn` there.
+
+8. You run no attack-library shard. Each dimension has exactly one owner:
    the Failure Modes / Functional and Accessibility / UX shards belong to the
    Design Critic, the Security shard to the Security Prober, and the
    Structural shard to the Architect.
@@ -150,8 +158,9 @@ The orchestrator pauses the build without consuming a round.
 ### Step 4 — Start the Application
 
 Using the startup command documented in `HANDOFF.md`, start the application
-server via bash from the `output/` directory. Confirm it is running and
-accessible at the expected URL before opening any browser tools.
+server via bash from the `output/` directory. Set `PORT` (and `API_PORT`, if `HANDOFF.md` lists one) to the values in
+`HANDOFF.md`, and record the PID of every process you start. Confirm it is
+running and accessible at the expected URL before opening any browser tools.
 
 If the server fails to start, do not debug or fix it. Then:
 
@@ -221,7 +230,10 @@ and was not documented as an assumption in `HANDOFF.md` — is a failure.
 
 Assumptions documented in `HANDOFF.md` should be evaluated for reasonableness.
 A documented deviation that is clearly an improvement may be accepted.
-A documented deviation that is a simplification or scope reduction fails.
+A documented deviation that is a simplification or scope reduction fails,
+with one exception: a `should` feature marked `⛔ Deferred: <rationale>` in
+the HANDOFF.md Feature Checklist is not a failure. A `must` feature can never
+be deferred, and simplifying a `must` acceptance criterion fails.
 
 A known issue in `HANDOFF.md` does NOT exempt a `must`-tier feature's
 acceptance criteria from grading. Documented or not, a broken `must` feature
@@ -282,6 +294,21 @@ This is informational only. It does not grade unless `<scale_targets>` set
 explicit response-time budgets — in which case violation of those budgets is
 a Tier 1 failure under Spec Compliance.
 
+### 8. Adjudicate Conflicts
+
+For each `status: open` entry in `conflicts/round_N.md`, reproduce the
+finding against the current build and the spec, then set its `status:` line
+in that file:
+
+- `upheld`: the finding holds; the Generator must fix it.
+- `withdrawn`: the finding does not hold against the spec. Reviewers will
+  not re-file it.
+- `needs-user`: a contradiction the spec cannot settle. The orchestrator
+  asks the user.
+
+Add one line of evidence under each status, and list every decision in your
+report's Conflict Adjudication section.
+
 ---
 
 ## Grading Criteria
@@ -304,9 +331,9 @@ Tier 1 failures are immediate hard failures. Tier 2 failures are scored.
 - **Spec Compliance**: Are all `must`-priority features from
   `planner_output.md` implemented with their acceptance criteria satisfied?
   Are undocumented deviations absent? Partial implementations fail. A
-  `should`-priority feature missing without documented deferral in
-  `BUILD_NOTES.md` is also a Tier 1 failure; `nice`-priority features may be
-  absent.
+  `should`-priority feature that is missing and not marked
+  `⛔ Deferred: <rationale>` in the HANDOFF.md Feature Checklist is also a
+  Tier 1 failure; `nice`-priority features may be absent.
 
 - **Coverage**: Every feature in `<core_feature_deliverables>` has been
   tested. A `NOT TESTED` entry on the Spec Coverage Matrix is itself a Tier 1
@@ -379,6 +406,10 @@ round when you determine that user input is required.
 
 ## Output: Evaluation Report
 
+Before writing your report, stop every process you started, using the How
+to Stop commands in `HANDOFF.md`, and confirm the ports are free
+(`lsof -ti :<port>` prints nothing).
+
 Every round, write your report to `eval_report_round_[N].md`.
 
 Report style: lead with the outcome; include only detail that
@@ -441,6 +472,12 @@ Structured table — one row per prior CRITICAL/MODERATE finding:
 - Cold page load: [<1s | 1–3s | >3s]
 - Common-action response: [<1s | 1–3s | >3s]
 - Notes: [any operations that felt notably slow]
+
+## Conflict Adjudication
+| Entry | Finding | Status | Evidence |
+|---|---|---|---|
+| [C1] | [finding_ref] | upheld / withdrawn / needs-user | [what you observed] |
+[Or "None: no open conflicts this round."]
 
 ## Security Baseline (from security_probe_round_N.md)
 - security_fail: [N] | not_tested: [N]
@@ -566,7 +603,8 @@ question to two concrete alternatives where possible.]
 
 The pipeline pauses on this file; the orchestrator surfaces the question to
 the user. After the user answers, the orchestrator appends their answer to
-`pipeline-state/user-intervention.md` and resumes the build. This does not
+`planner_output.md` as a `<spec_amendment>` block, which you will see next
+round, and resumes the build. This does not
 consume a round.
 
 Use this sparingly. Escalation is appropriate when a product decision is

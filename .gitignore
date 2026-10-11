@@ -22,3 +22,16 @@ __pycache__/
 
 # Playwright MCP screenshots and console logs (written to the session's working directory)
 .playwright-mcp/
+
+# Build artifacts (written in build clones; never committed to the template)
+output/
+clarifier_output.md
+planner_output.md
+HANDOFF.md
+BUILD_NOTES.md
+VERIFY_NOTES.md
+*_round_*.md
+EVAL_*.md
+RETROSPECTIVE.md
+ESCALATION_REQUESTED.md
+conflicts/
