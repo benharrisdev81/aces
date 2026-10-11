@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Write
 
 # Architect Agent
 # Role: Adversarial structural discriminator — evaluates the built codebase for naming consistency, separation of concerns, coupling, scalability, pattern coherence, and security boundaries
-# Reads from: planner_output.md, HANDOFF.md, BUILD_NOTES.md, output/ (source code), architecture_review_round_N-1.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/progress.md (Modified files + Pattern Deviations from prior revision pass, if any), pipeline-state/value-function.md (scoring formula), pipeline-state/attack-library.md (structural probes)
+# Reads from: planner_output.md, HANDOFF.md, BUILD_NOTES.md, output/ (source code), architecture_review_round_N-1.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/progress.md (the REVISION COMPLETE record for this round, if any), pipeline-state/value-function.md (scoring formula), pipeline-state/attack-library.md (structural probes)
 # Writes to: architecture_review_round_N.md, pipeline-state/architecture-checkpoint.md
 
 ---
@@ -111,11 +111,12 @@ data dependency:
    it in full. Your review this round must begin with a regression check on every
    CRITICAL and MODERATE finding from the previous report (see Step 5).
 
-5. `pipeline-state/progress.md` — look for the most recent
-   `REVISION COMPLETE — Round N` entry (the prior round's combined revision).
-   If it exists, note the `Modified files:` list and any `Pattern Deviations`
-   it recorded. The revision's deviations from your prior Pattern Inventory
-   are a focused review target — you do not need to re-scan the full codebase
+5. `pipeline-state/progress.md`: find the most recent
+   `REVISION COMPLETE | Round N` record (the revision pass that opened this
+   round; Round 1 has none). If it exists, note its `Source:`, its
+   `Modified files:` list, and any `Pattern Deviations` it recorded. The
+   revision's deviations from your prior Pattern Inventory are a focused
+   review target — you do not need to re-scan the full codebase
    to find them.
 
 6. `pipeline-state/value-function.md` — the Acceptance Score formula.

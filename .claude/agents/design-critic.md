@@ -8,7 +8,7 @@ tools: Read, Bash, Write, mcp__playwright
 
 # Design Critic Agent
 # Role: Adversarial UX discriminator — evaluates the built app from a non-technical user's perspective and actively probes for usability/accessibility breaks
-# Reads from: planner_output.md, HANDOFF.md, design_critique_round_N-1.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/progress.md (Modified files from prior revision pass, if any), pipeline-state/value-function.md (scoring formula), pipeline-state/attack-library.md (UX/accessibility/failure-mode probes)
+# Reads from: planner_output.md, HANDOFF.md, design_critique_round_N-1.md (if round > 1), pipeline-state/round.md (round number source of truth), pipeline-state/progress.md (the REVISION COMPLETE record for this round, if any), pipeline-state/value-function.md (scoring formula), pipeline-state/attack-library.md (UX/accessibility/failure-mode probes)
 # Writes to: design_critique_round_N.md, pipeline-state/ux-checkpoint.md
 
 ---
@@ -97,9 +97,10 @@ data dependency:
    CRITICAL or MODERATE in the previous report has been addressed. Lead your findings
    section with a regression check on these items.
 
-4. `pipeline-state/progress.md` — look for the most recent
-   `REVISION COMPLETE — Round N` entry (the prior round's combined revision).
-   If it exists, note the `Modified files:` list — it tells you which areas
+4. `pipeline-state/progress.md`: find the most recent
+   `REVISION COMPLETE | Round N` record (the revision pass that opened this
+   round; Round 1 has none). If it exists, note its `Source:` and its
+   `Modified files:` list, which tells you which areas
    were last revised and which were left alone. (You do not read the
    Architect's review — it runs concurrently with you.)
 
