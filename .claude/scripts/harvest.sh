@@ -30,6 +30,7 @@
 set -euo pipefail
 
 die() { echo "harvest.sh: $*" >&2; exit 1; }
+trap 'echo "harvest.sh: failed; run: $0 abort (the remote branch may also need deleting)" >&2' ERR
 
 REPO_ROOT="$(git rev-parse --show-toplevel)" || die "not inside a git repository"
 WORKTREE="$REPO_ROOT/.harvest"
@@ -83,6 +84,18 @@ cmd_finish() {
   [ -z "$offenders" ] || die "non-harvestable files in the diff — build artifacts must not flow back to the template:
 $offenders"
 
+  # Append-only: no existing line may be removed or rewritten, except the
+  # "- **Seen**:" counters that dedup increments. Skip the "--- a/file" headers.
+  local bad
+  bad="$(git -C "$WORKTREE" diff -U0 origin/main -- "${ALLOWED_FILES[@]}" \
+    | grep -E '^-' | grep -vE '^--- (a/|/dev/null)' | grep -vE '^-- \*\*Seen\*\*:' || true)"
+  [ -z "$bad" ] || die "harvest removes or rewrites existing lines (append-only violated):
+$bad"
+  local f
+  for f in "${ALLOWED_FILES[@]}"; do
+    head -1 "$WORKTREE/$f" | grep -q '^format-version: ' || die "$f: format-version header missing from line 1"
+  done
+
   git -C "$WORKTREE" add "${ALLOWED_FILES[@]}"
   git -C "$WORKTREE" commit -m "harvest: $summary"
   git -C "$WORKTREE" push -u origin "$branch"
@@ -127,6 +140,9 @@ cmd_abort() {
   git -C "$REPO_ROOT" worktree remove --force "$WORKTREE"
   [ -n "$branch" ] && git -C "$REPO_ROOT" branch -D "$branch" || true
   echo "Harvest aborted; worktree removed${branch:+ and branch $branch deleted}."
+  if [ -n "$branch" ] && git -C "$REPO_ROOT" ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+    echo "The branch was already pushed. Delete it with: git push origin --delete $branch"
+  fi
 }
 
 case "${1:-}" in
