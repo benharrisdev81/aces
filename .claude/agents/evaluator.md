@@ -421,9 +421,7 @@ Then update `pipeline-state/checkpoint.md` with:
 
 Begin the report with the format-version line:
 
-```
 format-version: eval-report-v1
-```
 
 Then:
 
@@ -524,9 +522,7 @@ every round's four reports (`architecture_review_round_N.md`,
 `BUILD_NOTES.md`. Do not start the app or run any tests. Write
 `RETROSPECTIVE.md` in the project root with:
 
-```
 format-version: retrospective-v1
-```
 
 Then:
 
@@ -576,9 +572,7 @@ genuine product decision the spec did not anticipate), do not consume the
 round on a predictable failure. Write `ESCALATION_REQUESTED.md` in the
 project root with:
 
-```
 format-version: escalation-v1
-```
 
 Then:
 

@@ -84,9 +84,12 @@ single sub-agent can:
    reviewer whose area a revision barely touched stays cheap by choosing
    delta mode itself, based on the round's `REVISION COMPLETE` record.
 
-4. **Format-version checks.** Before passing one agent's output to the next,
-   verify the `format-version:` header on the first line. On mismatch, halt
-   with a clear error — do not let an agent parse a future format.
+4. **Format checks.** After any agent writes a handoff file or report, run
+   `python3 .claude/scripts/validate.py <file>`. It checks the line-1 header
+   (plain text, no code fence), the format's required sections, and, for
+   reviewer reports, the score-block. On failure, re-invoke that agent once
+   with the validator's output; if it fails again, write
+   `ESCALATION_REQUESTED.md`. Never pass an invalid file to the next agent.
 
 5. **Conflict resolution.** The Generator records findings it cannot act on
    in `conflicts/round_N.md`, and the Evaluator adjudicates them in the same
@@ -332,12 +335,12 @@ the step and `state.py done <task>` after each task (Responsibility #9).
       text if more than 4) and collect the answers verbatim.
    c. Invoke the Clarifier again with `mode: report`, the concept, its own questions,
       and the user's verbatim answers. It writes `clarifier_output.md` itself.
-   d. Confirm `clarifier_output.md` exists and line 1 is `<clarification_report>`.
+   d. Run `validate.py clarifier_output.md` (#4).
 
 2. **Invoke the Planner sub-agent** (step `plan`, task `planner`) with the
    content of `clarifier_output.md` as its input prompt. It writes
-   `planner_output.md` itself; this is the only copy of the spec. Confirm the
-   file exists and line 1 is `format-version: planner-v1`.
+   `planner_output.md` itself; this is the only copy of the spec. Run
+   `validate.py planner_output.md` (#4).
 
    If either check in steps 1d or 2 fails, re-invoke that agent once and state the
    problem. If it fails again, write `ESCALATION_REQUESTED.md`.
@@ -441,12 +444,14 @@ the step and `state.py done <task>` after each task (Responsibility #9).
 | `pipeline-state/build-ledger.md` | Orchestrator (one row per build, via harvest PR) | Orchestrator, user (gate calibration) |
 | `.claude/scripts/gate.py` | Template (canonical gate) | Orchestrator (runs each round) |
 | `.claude/scripts/state.py` | Template | Orchestrator (every state change) |
+| `.claude/scripts/validate.py` | Template | Orchestrator (after every agent write) |
 | `.claude/scripts/harvest.sh` | Template (canonical plumbing) | Orchestrator (runs post-RETROSPECTIVE) |
 
 ## Format-Version Headers
 
-Every handoff file begins with a `format-version:` line. Reading agents
-check it and surface a clear error on mismatch rather than parsing garbage.
+Every handoff file begins with a `format-version:` line, as plain text with
+no code fence. `.claude/scripts/validate.py` checks it after every write, and
+reading agents still surface a mismatch rather than parse garbage.
 
 | File | Current version |
 |---|---|

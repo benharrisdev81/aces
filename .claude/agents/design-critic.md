@@ -408,9 +408,7 @@ Report style: lead with the outcome; include only detail that changes what the
 Generator would do next — and write complete sentences, not fragments,
 abbreviations, or arrow chains. Begin with the format-version line:
 
-```
 format-version: design-critique-v1
-```
 
 Then:
 

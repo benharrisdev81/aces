@@ -431,9 +431,7 @@ project root. Report style: lead with the outcome; include only detail that
 changes what the Generator would do next — and write complete sentences, not
 fragments, abbreviations, or arrow chains. Begin with the format-version line:
 
-```
 format-version: architecture-review-v1
-```
 
 Then:
 

@@ -73,9 +73,7 @@ no code fence around it. Then wrap each section in the XML tags shown. The
 format-version line allows downstream agents to detect format drift and fail
 loudly rather than parse garbage.
 
-```
 format-version: planner-v1
-```
 
 <planner_assumptions>
 A 2–3 sentence statement of the product-level assumptions you are committing
