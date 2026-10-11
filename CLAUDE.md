@@ -70,10 +70,10 @@ mirrors those values.
 The orchestrator (this top-level Claude Code session) owns these jobs that no
 single sub-agent can:
 
-1. **Round state.** Maintain `pipeline-state/round.md` as the single source of
-   truth for the current round number; sub-agents read it instead of counting
-   files. Update it at the start of every round, before the Generator pass.
-   See "Round state file" below.
+1. **Round state.** Start every round with `state.py round N`, before that
+   round's Generator pass. It records the round in `state.json` and rewrites
+   `pipeline-state/round.md`, which sub-agents read instead of counting
+   files. See "Round state file" below.
 
 2. **One build per clone.** Each build runs in its own clone, so build state
    lives in the project root and directly in `pipeline-state/`. Do not create
@@ -94,8 +94,10 @@ single sub-agent can:
    and ask the user only about an entry marked `needs-user`, and record the
    answer as a spec amendment (#7).
 
-6. **Escalation handling.** If any agent writes `ESCALATION_REQUESTED.md`, pause
-   the build, surface the question to the user, record their answer as a
+6. **Escalation handling.** If any agent writes `ESCALATION_REQUESTED.md`, record
+   it with `state.py set escalation '<agent and question>'`, pause the build,
+   surface the question to the user, clear it with
+   `state.py set escalation null` once answered, record their answer as a
    spec amendment (#7), and resume. Do not consume a round.
 
 7. **Spec amendments.** When the user issues "Pause build: [message]" or
@@ -117,10 +119,12 @@ single sub-agent can:
    (default: **US$100 per build**, user-configurable), halt and ask the user to
    confirm continuation.
 
-9. **Pipeline index.** Maintain `pipeline-state/index.md` — a 30-line at-a-glance
-   summary of pipeline state (current round, last phase, latest gate
-   result, last revision summary). Reading agents start here; deeper files
-   are reference material.
+9. **Pipeline state.** `pipeline-state/state.json` records the round, the
+   current step, that step's `pending` and `done` tasks, the commit under
+   review, and any open escalation. Change it only through
+   `python3 .claude/scripts/state.py`; never edit the JSON by hand. Before
+   each Orchestration Step, run `state.py step <name> <task> ...` with the
+   step's tasks; after each task succeeds, run `state.py done <task>`.
 
 10. **Retrospective.** After you write `EVAL_PASS.md` or
     `EVAL_UNRECOVERABLE.md`, invoke the Evaluator once with
@@ -131,9 +135,9 @@ single sub-agent can:
     N exist, run `python3 .claude/scripts/gate.py N --tier <tier>`, taking
     `<tier>` from the `<originality_tier>` section of `planner_output.md`.
     The script reads the reports' score-blocks itself; its exit code alone
-    decides the round (see Orchestration Step 5). Put its `Round N:` result
-    line into `pipeline-state/index.md`. Never decide PASS or FAIL yourself,
-    and never edit a report's score-block.
+    decides the round (see Orchestration Step 5). Record its `Round N:`
+    result line with `state.py set last_gate '<line>'`. Never decide PASS or
+    FAIL yourself, and never edit a report's score-block.
 
 12. **Terminal files.** Only you write `EVAL_PASS.md` and
     `EVAL_UNRECOVERABLE.md`, and only from `gate.py` output: `EVAL_PASS.md`
@@ -194,36 +198,26 @@ single sub-agent can:
 
 When invoked with "Resume build":
 
-1. Read `pipeline-state/index.md` for the at-a-glance state.
-2. Read `pipeline-state/round.md` for the current round number.
-3. Read `pipeline-state/progress.md` to find the last completed phase / revision entry.
-4. Read `pipeline-state/checkpoint.md` to find the last Evaluator round state.
-5. Read `pipeline-state/architecture-checkpoint.md` to find the last Architect round state.
-6. Read `pipeline-state/ux-checkpoint.md` to find the last Design Critic round state.
-6b. Read `pipeline-state/security-checkpoint.md` to find the last Security Prober round state.
-7. Read `pipeline-state/session.md` to find the last completed feature within the current Generator phase.
-8. Read the `<spec_amendment>` blocks at the end of `planner_output.md`, if any.
-9. Determine re-entry point (check in this order):
-   - If `ESCALATION_REQUESTED.md` exists and is unanswered: surface the question to the user; pause.
-   - If a `conflicts/round_*.md` entry is marked `needs-user` and no spec amendment answers it: surface it to the user; pause.
-   - If round.md shows Round N > 1 and progress.md has no `REVISION COMPLETE` record for Round N: re-invoke the Generator for the combined revision, passing every Round N-1 report with open findings.
-   - The remaining reviewer branches apply only once the round's Generator pass is complete (`HANDOFF COMPLETE` for Round 1, the `REVISION COMPLETE` record for Round N > 1):
-     - If any reviewer has round N IN PROGRESS in its checkpoint file: re-invoke it. If it belongs to the live-app chain, continue the chain after it.
-     - If `architecture_review_round_N.md` is missing: invoke the Architect.
-     - If any live-app chain report for round N is missing (`design_critique_round_N.md`, `security_probe_round_N.md`, `eval_report_round_N.md`): invoke the first missing agent in chain order (Design Critic, Security Prober, Evaluator) and continue the chain from there. This can run in parallel with the Architect branch above.
-     - If all four round N reports exist and neither `EVAL_PASS.md` nor `EVAL_UNRECOVERABLE.md` exists: run the gate (Orchestration Step 5). The gate is deterministic, so re-running it is safe.
-   - If `EVAL_PASS.md` or `EVAL_UNRECOVERABLE.md` exists but `RETROSPECTIVE.md` does not: invoke the Evaluator with `mode: retrospective`.
-   - If `RETROSPECTIVE.md` exists: the build is finished. Ask the user whether harvesting (#13, #16, #17) already ran before running it.
-   - If Generator is mid-phase (session.md shows incomplete phase): re-invoke the Generator, instructing it to read `pipeline-state/session.md` and continue from the last completed feature.
-   - If a phase boundary was the last log entry in progress.md (HANDOFF COMPLETE not present): re-invoke the Generator at the next phase.
-   - If only Planner has completed (planner_output.md is populated, progress.md is empty): re-invoke the Generator from Phase 1.
-   - If only Clarifier has completed (clarifier_output.md exists, planner_output.md is absent or empty): re-invoke the Planner with the content of clarifier_output.md.
-10. Continue the pipeline forward from that point.
+1. Run `python3 .claude/scripts/state.py get`.
+2. If `escalation` is set: surface the question to the user and pause.
+3. If a `conflicts/round_*.md` entry is marked `needs-user` and no spec
+   amendment answers it: surface it to the user and pause.
+4. Re-run every task in `pending` for the current `step` and `round`:
+   re-invoke each pending agent (chain agents in chain order, the Architect
+   in parallel), rerun the gate, or redo the pending harvest task. A
+   re-invoked Generator reads `pipeline-state/session.md` and continues from
+   the last completed feature.
+5. Continue the pipeline forward from that step.
+
+Resume never infers state from the other files. `progress.md`, `session.md`,
+and the per-agent checkpoint files (`checkpoint.md`,
+`architecture-checkpoint.md`, `ux-checkpoint.md`, `security-checkpoint.md`)
+are audit logs.
 
 ## Round State File
 
-At the start of every round, before that round's Generator pass, write
-`pipeline-state/round.md`:
+At the start of every round, before that round's Generator pass,
+`state.py round N` writes `pipeline-state/round.md`:
 
 ```
 Current Round: N
@@ -321,7 +315,10 @@ content work between the two calls):
 
 ## Orchestration Steps
 
-1. **Clarify.**
+Each step names its `state.py` step and tasks. Run `state.py step` before
+the step and `state.py done <task>` after each task (Responsibility #9).
+
+1. **Clarify.** First run `state.py init`. Step `clarify`, task `clarifier`.
    a. Invoke the Clarifier with `mode: questions` and the user's concept. It returns
       either `NO_QUESTIONS` or a `<clarifier_questions>` block (max 5, numbered).
    b. If it returned questions, ask them yourself with AskUserQuestion (or in plain
@@ -330,15 +327,16 @@ content work between the two calls):
       and the user's verbatim answers. It writes `clarifier_output.md` itself.
    d. Confirm `clarifier_output.md` exists and line 1 is `<clarification_report>`.
 
-2. **Invoke the Planner sub-agent** with the content of `clarifier_output.md` as its
-   input prompt. It writes `planner_output.md` itself; this is the only copy of
-   the spec. Confirm the file exists and line 1 is `format-version: planner-v1`.
+2. **Invoke the Planner sub-agent** (step `plan`, task `planner`) with the
+   content of `clarifier_output.md` as its input prompt. It writes
+   `planner_output.md` itself; this is the only copy of the spec. Confirm the
+   file exists and line 1 is `format-version: planner-v1`.
 
    If either check in steps 1d or 2 fails, re-invoke that agent once and state the
    problem. If it fails again, write `ESCALATION_REQUESTED.md`.
 
-3. **Start Round 1.** Write `pipeline-state/round.md` with `Current Round: 1`,
-   then invoke the Generator sub-agent for the initial build. It reads
+3. **Start Round 1.** Run `state.py round 1`, then invoke the Generator
+   sub-agent for the initial build (step `build`, task `generator`). It reads
    `planner_output.md`, builds the app into `output/`, commits, and writes
    `HANDOFF.md`, `BUILD_NOTES.md`, and `VERIFY_NOTES.md` to the project root.
 
@@ -346,8 +344,10 @@ content work between the two calls):
    every listed environment variable is set before any reviewer starts the
    app. If one is missing, pause the build and ask the user to set it.
 
-4. **Review the commit.** When the round's Generator pass is complete, launch
-   two tracks in parallel:
+4. **Review the commit.** When the round's Generator pass is complete, record
+   the commit with `state.py set commit <output/ HEAD>` and launch two tracks
+   in parallel (step `review`, tasks `architect design_critic security_prober
+   evaluator`):
 
    a. The **Architect** reads `planner_output.md`, `HANDOFF.md`,
       `BUILD_NOTES.md`, and the source code in `output/`, reviews structural
@@ -375,18 +375,20 @@ content work between the two calls):
    score-block. Nothing commits to `output/` while reviewers run, so all four
    reports describe the same commit.
 
-5. **Run the ship gate.** When all four reports exist, run:
+5. **Run the ship gate** (step `gate`, task `gate`). When all four reports
+   exist, run:
 
    ```
    python3 .claude/scripts/gate.py N --tier <originality_tier from planner_output.md>
    ```
 
-   - **Exit 0, PASS:** write `EVAL_PASS.md` (#12), then invoke the Evaluator with
-     `mode: retrospective` to write `RETROSPECTIVE.md`. Then run
-     attack-library harvesting (#13), playbook harvesting (#16), and
+   - **Exit 0, PASS:** write `EVAL_PASS.md` (#12). Then (step `finish`, tasks
+     `retrospective attack_library playbook harvest_back`) invoke the
+     Evaluator with `mode: retrospective` to write `RETROSPECTIVE.md`, and
+     run attack-library harvesting (#13), playbook harvesting (#16), and
      harvest-back (#17). The pipeline is complete.
-   - **Exit 1, FAIL, N < 5:** write `pipeline-state/round.md` with
-     `Current Round: N+1`. Invoke the Generator once, passing the explicit
+   - **Exit 1, FAIL, N < 5:** run `state.py round N+1`. Invoke the Generator
+     once (step `revision`, task `generator`), passing the explicit
      path of every Round N report with open findings, for one combined
      revision pass. When its `REVISION COMPLETE` record appears in
      `pipeline-state/progress.md`, repeat from Step 4 for Round N+1.
@@ -416,13 +418,13 @@ content work between the two calls):
 | `RETROSPECTIVE.md` | Evaluator (`mode: retrospective`) | Orchestrator (surfaces to user) |
 | `ESCALATION_REQUESTED.md` | Any agent | Orchestrator → User |
 | `conflicts/round_N.md` | Generator (entries), Evaluator (status) | Evaluator, all reviewers, Orchestrator |
-| `pipeline-state/round.md` | Orchestrator | All reviewer agents |
-| `pipeline-state/index.md` | Orchestrator | All agents (at-a-glance state) |
+| `pipeline-state/state.json` | Orchestrator, only via `state.py` | Orchestrator (resume) |
+| `pipeline-state/round.md` | `state.py round` | All reviewer agents |
 | `pipeline-state/progress.md` | Generator (phase transitions + one `REVISION COMPLETE` record per revision pass) | Orchestrator, Architect, Design Critic |
-| `pipeline-state/checkpoint.md` | Evaluator (round state) | Orchestrator |
-| `pipeline-state/architecture-checkpoint.md` | Architect (round state) | Orchestrator |
-| `pipeline-state/ux-checkpoint.md` | Design Critic (round state) | Orchestrator |
-| `pipeline-state/security-checkpoint.md` | Security Prober (round state) | Orchestrator |
+| `pipeline-state/checkpoint.md` | Evaluator (round state) | Audit log only |
+| `pipeline-state/architecture-checkpoint.md` | Architect (round state) | Audit log only |
+| `pipeline-state/ux-checkpoint.md` | Design Critic (round state) | Audit log only |
+| `pipeline-state/security-checkpoint.md` | Security Prober (round state) | Audit log only |
 | `pipeline-state/session.md` | Generator (per-feature progress) | Orchestrator (resume) |
 | `pipeline-state/user-intervention.md` | Orchestrator (raw log of "Pause build" messages and escalation answers) | User only |
 | `pipeline-state/cost.md` | Orchestrator (per-round token usage) | Orchestrator |
@@ -431,6 +433,7 @@ content work between the two calls):
 | `pipeline-state/playbook.md` | Orchestrator (post-build lesson harvesting) | Generator only (never reviewers) |
 | `pipeline-state/build-ledger.md` | Orchestrator (one row per build, via harvest PR) | Orchestrator, user (gate calibration) |
 | `.claude/scripts/gate.py` | Template (canonical gate) | Orchestrator (runs each round) |
+| `.claude/scripts/state.py` | Template | Orchestrator (every state change) |
 | `.claude/scripts/harvest.sh` | Template (canonical plumbing) | Orchestrator (runs post-RETROSPECTIVE) |
 
 ## Format-Version Headers
