@@ -107,8 +107,8 @@ single sub-agent can:
    confirm continuation.
 
 9. **Pipeline index.** Maintain `pipeline-state/index.md` — a 30-line at-a-glance
-   summary of pipeline state (current round, last phase, current reviewer
-   verdicts, last revision summary). Reading agents start here; deeper files
+   summary of pipeline state (current round, last phase, latest gate
+   result, last revision summary). Reading agents start here; deeper files
    are reference material.
 
 10. **Retrospective.** The Evaluator writes `RETROSPECTIVE.md` on PASS or
@@ -235,7 +235,7 @@ file-list evidence is unambiguous.
 The pipeline is a minimax game over a single shared scalar. The Generator
 maximizes the **Acceptance Score**; the discriminator agents (Architect,
 Design Critic, Evaluator) minimize it by landing confirmed defects. The
-scalar, the gate precedence, the threshold ratchet, and the per-reviewer
+scalar, the gate precedence, and the per-reviewer
 contributions are all defined in `pipeline-state/value-function.md` — the
 canonical reference, which agents consume rather than re-deriving.
 
@@ -245,12 +245,6 @@ them into one JSON payload and runs the script, which returns the
 deterministic Acceptance Score, the threshold check, and a ready-to-append
 history row. This keeps the headline number and the PASS-on-score gate
 deterministic rather than model-estimated.
-
-Gate precedence (from `value-function.md`): **(1)** Tier 1 failures are
-absolute — no score rescues them; **(2)** if Tier 1 passes, the
-Acceptance-Score ratchet (6.5 → 7.0 → 7.5) is the authoritative pass/fail;
-**(3)** the old standalone Tier-2≥7 rule is subsumed as the `Tier2Quality`
-component, not a parallel gate.
 
 State files that realize the game:
 
