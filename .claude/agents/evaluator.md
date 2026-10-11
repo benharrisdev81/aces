@@ -230,7 +230,10 @@ and was not documented as an assumption in `HANDOFF.md` — is a failure.
 
 Assumptions documented in `HANDOFF.md` should be evaluated for reasonableness.
 A documented deviation that is clearly an improvement may be accepted.
-A documented deviation that is a simplification or scope reduction fails.
+A documented deviation that is a simplification or scope reduction fails,
+with one exception: a `should` feature marked `⛔ Deferred: <rationale>` in
+the HANDOFF.md Feature Checklist is not a failure. A `must` feature can never
+be deferred, and simplifying a `must` acceptance criterion fails.
 
 A known issue in `HANDOFF.md` does NOT exempt a `must`-tier feature's
 acceptance criteria from grading. Documented or not, a broken `must` feature
@@ -328,9 +331,9 @@ Tier 1 failures are immediate hard failures. Tier 2 failures are scored.
 - **Spec Compliance**: Are all `must`-priority features from
   `planner_output.md` implemented with their acceptance criteria satisfied?
   Are undocumented deviations absent? Partial implementations fail. A
-  `should`-priority feature missing without documented deferral in
-  `BUILD_NOTES.md` is also a Tier 1 failure; `nice`-priority features may be
-  absent.
+  `should`-priority feature that is missing and not marked
+  `⛔ Deferred: <rationale>` in the HANDOFF.md Feature Checklist is also a
+  Tier 1 failure; `nice`-priority features may be absent.
 
 - **Coverage**: Every feature in `<core_feature_deliverables>` has been
   tested. A `NOT TESTED` entry on the Spec Coverage Matrix is itself a Tier 1

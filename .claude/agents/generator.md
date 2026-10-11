@@ -516,8 +516,9 @@ this list before writing HANDOFF.md.
   [ ] Every `must` feature in the spec's Core Feature Deliverables is
       implemented and functional — not stubbed, not deferred.
 
-  [ ] Every `should` feature is implemented unless documented as deferred
-      with rationale in `BUILD_NOTES.md`. `nice` features may be skipped.
+  [ ] Every `should` feature is implemented unless marked
+      `⛔ Deferred: <rationale>` in the HANDOFF.md Feature Checklist. `nice`
+      features may be skipped.
 
   [ ] Every feature's acceptance criteria from the spec are satisfied. Walk
       the criteria one by one and check.
@@ -616,7 +617,10 @@ Then:
 
   ## Feature Checklist
   Every feature in the spec's Core Feature Deliverables listed with:
-  ✅ Complete — or — ⚠️ Partial (with a one-line explanation) — or — ⛔ Deferred
+  ✅ Complete — or — ⚠️ Partial (with a one-line explanation) — or —
+  ⛔ Deferred: <rationale>. Only `should` and `nice` features may be
+  deferred; a `must` feature never can. This checklist is the one place a
+  deferral counts.
   Include the priority tag (`must | should | nice`) for each feature.
 
   ## Known Issues
